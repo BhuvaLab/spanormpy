@@ -1,9 +1,12 @@
 # spanormpy
 
+[![CI](https://github.com/BhuvaLab/spanormpy/actions/workflows/ci.yaml/badge.svg)](https://github.com/BhuvaLab/spanormpy/actions/workflows/ci.yaml)
 [![PyPI version](https://img.shields.io/pypi/v/spanormpy)](https://pypi.org/project/spanormpy/)
 [![PyPI monthly downloads](https://static.pepy.tech/badge/spanormpy/month)](https://pepy.tech/project/spanormpy)
 [![PyPI total downloads](https://static.pepy.tech/badge/spanormpy)](https://pepy.tech/project/spanormpy)
 [![conda-forge downloads](https://img.shields.io/conda/dn/conda-forge/spanormpy)](https://anaconda.org/conda-forge/spanormpy)
+
+Documentation: <https://bhuvalab.github.io/SpaNorm/> (R and Python).
 
 Python / scverse port of the R package SpaNorm: spatially-aware library size normalisation for spatial
 transcriptomics data, on `AnnData` with a PyTorch (CPU / CUDA) backend.

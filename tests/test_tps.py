@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
+from tests._ref import load_ref
 
 from spanormpy._tps import bs_tps, tps_basis
-from tests._ref import load_ref
 
 RTOL, ATOL = 1e-10, 1e-12
 

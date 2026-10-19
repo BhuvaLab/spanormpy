@@ -5,7 +5,6 @@ import matplotlib
 matplotlib.use("Agg")
 
 import anndata
-import matplotlib.image as mimg
 import numpy as np
 import pandas as pd
 import pytest

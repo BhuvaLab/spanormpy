@@ -38,3 +38,9 @@ markers = ["gpu: test requires a CUDA device"]
 [tool.ruff]
 line-length = 100
 src = ["src", "tests"]
+
+[tool.ruff.lint]
+# pinned so CI does not depend on the ruff version's default rule set
+select = ["E4", "E7", "E9", "F", "I"]
+# short names (O, I, lambdas) mirror the R/maths notation of the port
+ignore = ["E731", "E741"]

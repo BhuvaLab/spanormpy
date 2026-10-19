@@ -5,12 +5,12 @@ import anndata
 import numpy as np
 import pytest
 import scipy.sparse as sp
+from tests._ref import load_ref
 
 import spanormpy._fitnb as fitnb_mod
-from spanormpy._fit import load_fit
 from spanormpy import spanorm
+from spanormpy._fit import load_fit
 from spanormpy.spanorm import match_df_tps, match_lambda
-from tests._ref import load_ref
 
 # `spanormpy.spanorm` the function shadows the module attribute; fetch the module itself
 sn = importlib.import_module("spanormpy.spanorm")

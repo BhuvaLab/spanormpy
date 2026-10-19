@@ -1,14 +1,18 @@
 # spanormpy
 
+[![CI](https://github.com/BhuvaLab/spanormpy/actions/workflows/ci.yaml/badge.svg)](https://github.com/BhuvaLab/spanormpy/actions/workflows/ci.yaml)
 [![PyPI version](https://img.shields.io/pypi/v/spanormpy)](https://pypi.org/project/spanormpy/)
 [![PyPI monthly downloads](https://static.pepy.tech/badge/spanormpy/month)](https://pepy.tech/project/spanormpy)
 [![PyPI total downloads](https://static.pepy.tech/badge/spanormpy)](https://pepy.tech/project/spanormpy)
 [![conda-forge downloads](https://img.shields.io/conda/dn/conda-forge/spanormpy)](https://anaconda.org/conda-forge/spanormpy)
 
 A faithful Python / scverse port of the R package
-[SpaNorm](https://github.com/bhuvad/SpaNorm) (spatially-aware normalisation for spatial
+[SpaNorm](https://github.com/BhuvaLab/SpaNorm) (spatially-aware normalisation for spatial
 transcriptomics data). It operates on `AnnData` (and optionally `SpatialData`) with a PyTorch
 backend that runs on CPU and CUDA (Apple Metal in float32).
+
+Documentation: <https://bhuvalab.github.io/SpaNorm/> (one site covering both the R package and spanormpy,
+with side-by-side R and Python tutorials and the API reference for each).
 
 Status: under development (`0.1.0.dev0`). Ports SpaNorm 1.7.15 (R commit `c12e5e5`).
 

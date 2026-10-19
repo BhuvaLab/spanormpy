@@ -7,8 +7,7 @@ import anndata
 import numpy as np
 import pytest
 import scipy.sparse as sp
-from tests._ref import load_ref
-from tests._ref import fit_from_ref
+from tests._ref import fit_from_ref, load_ref
 from tests.test_polish_spanorm import make_adata
 
 from spanormpy import spanorm_pca

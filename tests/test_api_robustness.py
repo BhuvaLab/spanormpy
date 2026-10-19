@@ -14,11 +14,11 @@ import anndata
 import numpy as np
 import pytest
 import scipy.sparse as sp
+from tests._ref import REF_DIR, load_ref
 
 import spanormpy._fitnb as fitnb_mod
 from spanormpy import spanorm
 from spanormpy._fit import load_fit
-from tests._ref import REF_DIR, load_ref
 
 sn = importlib.import_module("spanormpy.spanorm")
 

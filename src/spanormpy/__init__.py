@@ -1,9 +1,9 @@
 """spanormpy: Python port of the SpaNorm spatially-aware normalisation method."""
 
 from . import pl
+from ._filter import filter_genes
 from ._fit import is_polished
 from ._fitnb import calculate_mu, fit_nb
-from ._filter import filter_genes
 from ._settings import settings
 from .pca import spanorm_pca
 from .polish import nb_mu_floor, nb_profile_psi, polish_nb
