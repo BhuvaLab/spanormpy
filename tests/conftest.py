@@ -19,7 +19,10 @@ def dlpfc_small():
 def _devices():
     import torch
 
-    return ["cpu", "cuda"] if torch.cuda.is_available() else ["cpu"]
+    devs = ["cpu"]
+    if torch.cuda.is_available():
+        devs.append(pytest.param("cuda", marks=pytest.mark.gpu))
+    return devs
 
 
 @pytest.fixture(params=_devices())

@@ -25,6 +25,8 @@ def _read(obj):
     if isinstance(a, bytes):
         return a.decode()
     a = np.asarray(a)
+    if a.ndim == 1 and a.size == 1:
+        a = a.reshape(())  # length-1 R vector -> scalar (1x1 matrices are 2-D and stay arrays)
     if a.ndim == 0:
         return _decode(a.reshape(1))[0].item() if a.dtype.kind in "SO" else a.item()
     # rhdf5 writes R's column-major array reversed; h5py sees dims reversed, so transpose back.
@@ -32,6 +34,10 @@ def _read(obj):
 
 
 def load_ref(topic: str) -> dict:
-    """Read ``tests/ref/data/<topic>.h5`` with R's array shapes and scalars as Python scalars."""
+    """Read ``tests/ref/data/<topic>.h5`` with R's array shapes.
+
+    Length-1 R vectors become Python scalars; use ``np.atleast_1d`` if you need an array.
+    1x1 matrices keep shape (1, 1). R ``NA`` becomes ``nan``.
+    """
     with h5py.File(REF_DIR / f"{topic}.h5", "r") as f:
         return {k: _read(f[k]) for k in f}

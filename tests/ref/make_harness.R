@@ -4,5 +4,7 @@ write_ref(list(
   v = c(1, NA),
   s = c("a", "b"),
   x = 3.25,
-  f = factor(c("u", "v", "u"))
+  f = factor(c("u", "v", "u")),
+  s1 = "only",
+  m11 = matrix(7.5, 1, 1)
 ), "harness")

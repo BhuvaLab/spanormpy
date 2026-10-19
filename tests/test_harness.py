@@ -9,8 +9,14 @@ def test_roundtrip():
     assert ref["m"][1, 2] == 6.5
     assert np.isnan(ref["v"][1])
     assert list(ref["s"]) == ["a", "b"]
-    assert ref["x"] == 3.25
+    assert isinstance(ref["x"], float) and ref["x"] == 3.25
     assert list(ref["f"]) == ["u", "v", "u"]
+
+
+def test_length_one_values():
+    ref = load_ref("harness")
+    assert isinstance(ref["s1"], str) and ref["s1"] == "only"
+    assert ref["m11"].shape == (1, 1) and ref["m11"][0, 0] == 7.5
 
 
 def test_dlpfc_small(dlpfc_small):
