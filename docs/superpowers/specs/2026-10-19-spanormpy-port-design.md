@@ -254,7 +254,7 @@ above, docs tooling details, how `n_jobs` is implemented.
 
 ## Addendum (2026-10-19): one documentation website for SpaNorm and spanormpy
 
-**User decisions:** a single Quarto website serves both packages. It replaces SpaNorm's pkgdown site, lives in the SpaNorm repo and deploys to the same GitHub Pages URL (bhuvad.github.io/spaNorm). Code examples sit in R | Python tabs (`panel-tabset group="language"`), so picking one language switches every tab on the site and the choice is remembered.
+**User decisions:** a single Quarto website serves both packages. It replaces SpaNorm's pkgdown site, lives in the SpaNorm repo and deploys to the same GitHub Pages URL (bhuvalab.github.io/SpaNorm). Code examples sit in R | Python tabs (`panel-tabset group="language"`), so picking one language switches every tab on the site and the choice is remembered.
 
 **Design (my calls):**
 - **Location:** `site/` in the SpaNorm repo on a branch `docs/quarto-site`, created from `master` in a separate worktree at `../SpaNorm-site`. The user's own SpaNorm checkout is never touched. `site/` goes in `.Rbuildignore`, and Bioconductor vignettes are unchanged.

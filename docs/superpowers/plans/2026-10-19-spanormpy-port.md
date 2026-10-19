@@ -452,4 +452,4 @@ Global for Tasks 20–22:
   - Deploy: `quarto-dev/quarto-actions/publish` with `target: gh-pages` and `path: site`.
   - Pin action versions.
 - [ ] **Step 2:** Validate the YAML with `python -c "import yaml; yaml.safe_load(open(...))"` and `actionlint` if available. Re-run `quarto render site` from a clean clone of the branch to prove CI-equivalence offline.
-- [ ] **Step 3:** In spanormpy, point the README "Documentation" link at https://bhuvad.github.io/spaNorm/ and note that the site covers both languages. Commit in each repo, and push only the `docs/quarto-site` branch of SpaNorm and `port/spanorm` of spanormpy.
+- [ ] **Step 3:** In spanormpy, point the README "Documentation" link at https://bhuvalab.github.io/SpaNorm/ and note that the site covers both languages. Commit in each repo, and push only the `docs/quarto-site` branch of SpaNorm and `port/spanorm` of spanormpy.
