@@ -192,7 +192,10 @@ def as_tensor(x, device, dtype: torch.dtype | None = None) -> torch.Tensor:
         dtype = torch.float32 if device.type == "mps" else torch.float64
     if isinstance(x, torch.Tensor):
         return x.to(device=device, dtype=dtype)
-    return torch.as_tensor(np.asarray(x), dtype=dtype, device=device)
+    arr = np.asarray(x)
+    if not arr.flags.writeable:  # e.g. arrays of an AnnData view; torch warns on read-only input
+        arr = arr.copy()
+    return torch.as_tensor(arr, dtype=dtype, device=device)
 
 
 def check_winsor(winsor) -> None:

@@ -95,3 +95,33 @@ MAD NaN, so `psi.max` is NaN and `pmin(psi, psi.max)` is NaN for every gene: `no
 does not use `psi`) stays finite. A zero `psi` is harmless (`log(0) = -Inf` is absorbed by the median/MAD and
 the outputs stay finite), and R emits no warning. `winsorise_psi` and `normalise_*` reproduce this exactly
 (pinned by `test_degenerate_psi_matches_r`).
+
+## Batch factor levels: locale collation
+
+R's `factor()` sorts character batch labels with the session locale (`en_US.UTF-8`:
+`a < A < b < B`, punctuation < digits < letters); pandas and numpy sort by codepoint
+(`A < B < a < b`). `spanormpy._io.check_batch` sorts strings with an approximation of the
+glibc `en_US.UTF-8` collation (punctuation < digits < letters, case-insensitive first, lower
+case before upper case on ties). Exotic characters (accents, non-Latin scripts) may still
+order differently from R. Which level is the reference only changes the parametrisation of
+the batch columns, not the fitted values or the normalised data. For full control pass a
+`pandas.Categorical`, whose category order is used as given. Numeric vectors are one
+covariate column and booleans are factors, as in `model.matrix`. A single-level batch raises
+R's "contrasts can be applied only to factors with 2 or more levels"; unused categorical
+levels give all-zero columns, as in R.
+
+## Adjustment backend
+
+R's `SpaNorm()` calls the `normalise*` functions without a backend (they use the accelerator
+whenever one is available). `spanorm(backend=...)` passes the user's `backend` to the
+adjustment too, so `backend="cpu"` really keeps everything on the CPU.
+
+## Output sparsity
+
+R always stores `logcounts` as a sparse matrix. `spanorm` writes a dense float64 layer for
+dense input and a CSR layer for sparse input; values are identical.
+
+## Default pipeline (own size factors and sampling)
+
+Python's `quick_cluster` and RNG differ from R's, so the default pipeline is checked for
+closeness only (see `tests/test_spanorm.py::test_default_pipeline_close`).
