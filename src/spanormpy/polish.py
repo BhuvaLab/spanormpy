@@ -415,8 +415,14 @@ def polish_nb(
     # the design goes to the device once, outside the gene blocks
     W_use = _design(W, device)
     pen_t = as_tensor(pen, device, torch.float64)
+    # R builds the per-gene solver from the host design; on a device path the batched engine
+    # never uses it, so it must not be built from the device tensor.
+    W_host = W_use if W_use.device.type == "cpu" else _design(W, torch.device("cpu"))
+    pen_host = pen_t if pen_t.device.type == "cpu" else pen_t.cpu()
     solver = (
-        _newton_solver_compact(W_use, pen_t) if compact else nb_newton_solver(W_use, pen_t, nested)
+        _newton_solver_compact(W_host, pen_host)
+        if compact
+        else nb_newton_solver(W_host, pen_host, nested)
     )
     # The shared-factor batched solver absorbs 1x1 blocks only, so it gets `absorb_batch`
     # (for a slope fit, the nested indicators inside the per-sample blocks the per-gene

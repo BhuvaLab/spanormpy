@@ -4,3 +4,4 @@ __pycache__/
 *.egg-info/
 .ruff_cache/
 docs/_build/
+tests/ref/data/dlpfc_full.h5ad

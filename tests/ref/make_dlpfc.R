@@ -18,3 +18,17 @@ spe_out <- SingleCellExperiment(
 )
 reducedDim(spe_out, "spatial") <- as.matrix(spatialCoords(spe))
 writeH5AD(spe_out, "tests/ref/data/dlpfc_small.h5ad", X_name = "counts")
+
+# full data for the GPU benchmark (all spots, all genes passing filterGenes(prop = 0.2));
+# git-ignored, not used by the tests
+spe_full <- get("HumanDLPFC")
+spe_full <- spe_full[which(filterGenes(spe_full, prop = 0.2)), ]
+full_out <- SingleCellExperiment(
+  assays = list(counts = as.matrix(counts(spe_full))),
+  colData = S4Vectors::DataFrame(
+    AnnotatedCluster = as.character(colData(spe_full)$AnnotatedCluster),
+    row.names = colnames(spe_full)
+  )
+)
+reducedDim(full_out, "spatial") <- as.matrix(spatialCoords(spe_full))
+writeH5AD(full_out, "tests/ref/data/dlpfc_full.h5ad", X_name = "counts")
