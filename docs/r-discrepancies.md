@@ -175,3 +175,20 @@ columns removed on polishing are `svg_F`, `svg_p`, `svg_fdr`, `svg_F_raw` (R: `s
 Per-gene `held_out` is stored as a categorical `var` column (h5ad cannot hold missing strings in an
 object column). R's Seurat/DelayedArray branches and the pre-`polish`-slot RDS fixture have no
 Python counterpart.
+
+## spanorm_svg bookkeeping and subsets
+
+`SpaNormSVG` writes `svg.F`, `svg.p`, `svg.fdr` and returns the unclamped statistic only as an attribute
+of `svgTest()`'s table, which `rowData<-` drops; `spanorm_svg` keeps it as `var["svg_F_raw"]`
+(`svg_test(...).attrs["F_raw"]` for the table). The "SVG results exist" warning fires when all three of
+`svg_F`, `svg_p`, `svg_fdr` are present, and all four columns are replaced. Like `polish_spanorm`, a
+**spot** subset of an object carrying a fit is an error ("... model dimensions do not match ..."), and a
+**gene** subset reuses the stored full and null fits (the null of a gene subset keeps the whole fit's
+dispersion-winsorisation threshold), so the subset's statistics equal the full run's rows. A null that
+has to be fitted on a gene subset winsorises with the subset's own dispersions. `spanorm_svg` gained a
+`random_state` argument (seed of the null's dispersion subsampling, R: the global RNG). The paired
+null reuses `polish_spanorm_fit`, with the full fit's recorded `psi_method`, `ls`, `cells`, `maxit`,
+`tol` and `psi_range`, on the CPU backend (R does not pass `backend` to the polish either).
+`top_svgs` does not run `checkSPE` (R validates the counts); it only needs the SVG columns. R's
+`topSVGs` keeps rows whose FDR is `NA` when filtering (`NA <= fdr` subsets to `NA` rows); `top_svgs`
+drops them.
