@@ -129,6 +129,39 @@ def test_pnbinom_qnbinom_match_r(ref, device):
     np.testing.assert_array_equal(rt, d["rt_q"])
 
 
+def test_accelerator_loop_matches_r(ref):
+    """The cumulative-sum path used on GPUs, forced here on CPU tensors."""
+    d = ref["nb"]
+    x, mu, size = _nb_inputs(ref)
+    t = lambda a: torch.as_tensor(a, dtype=torch.float64)
+    got = nb._pnbinom_loop(t(x), t(mu), t(size)).numpy()
+    np.testing.assert_allclose(got, d["p"], rtol=1e-10, atol=1e-300)
+    q = nb._qnbinom_loop(t(d["qp"]), t(d["qmu"]), t(d["qsize"])).numpy()
+    np.testing.assert_array_equal(q, d["q"])
+    # Documented deviation (widened fuzz): at most one step off R, never below it.
+    rt = nb._qnbinom_loop(t(d["rt_p"]), t(d["rt_mu"]), t(d["rt_size"])).numpy()
+    np.testing.assert_array_equal(np.isinf(rt), np.isinf(d["rt_q"]))
+    fin = np.isfinite(d["rt_q"])
+    assert np.all(rt[fin] >= d["rt_q"][fin]) and np.all(rt[fin] - d["rt_q"][fin] <= 1)
+    assert (rt[fin] == d["rt_q"][fin]).mean() > 0.97
+
+
+def test_qnbinom_cap_warns_nan(monkeypatch):
+    monkeypatch.setattr(nb, "_QNBINOM_CAP", 3)
+    p = torch.tensor([0.5, 0.999999], dtype=torch.float64)
+    with pytest.warns(UserWarning, match="cap"):
+        q = nb._qnbinom_loop(p, torch.tensor([100.0, 100.0], dtype=torch.float64), 10.0)
+    assert torch.isnan(q).all()
+
+
+def test_nbdist_empty_tensors():
+    e = torch.zeros(0, dtype=torch.float64)
+    for fn in (nb.pnbinom, nb._pnbinom_loop):
+        assert fn(e, e, 1.0).numel() == 0
+    for fn in (nb.qnbinom, nb._qnbinom_loop):
+        assert fn(e, e, 1.0).numel() == 0
+
+
 def test_nbdist_edge_semantics():
     mu0 = torch.zeros(3, dtype=torch.float64)
     x = torch.tensor([0.0, 1.0, 2.0], dtype=torch.float64)
