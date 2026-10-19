@@ -4,10 +4,11 @@ import numpy as np
 import pytest
 from tests._ref import load_ref
 
+from spanormpy import _edger as edger
 from spanormpy._edger import EdgeRError, estimate_disp, estimate_disp_tagwise
 
 REF = load_ref("edger")
-CASES = sorted(REF)
+CASES = sorted(k for k in REF if k != "z")
 
 # rtol=1e-8 (looser than the 1e-10 closed-form default): the dispersions come out of a
 # spline-maximised adjusted profile likelihood built from ~1e3-magnitude log-likelihood sums
@@ -65,10 +66,35 @@ def test_apl_grid_and_ave_log_cpm_match_r(case_result):
     np.testing.assert_allclose(out["ave_log_cpm"], ref["ave_log_cpm"], rtol=1e-10, atol=1e-12)
 
 
-def test_unequal_residual_df_case_is_exercised():
+def test_unequal_residual_df_branch_is_taken():
     # case e has cells with zero count and fitted mean < 1e-4, so residual df differ by gene
-    c = REF["e"]
-    assert np.any(c["offset"] < -10) and np.any(c["y"][:20] == 0)
+    assert _run("e")["unequal_df"]
+    assert not _run("a")["unequal_df"]
+
+
+def test_nonconverged_newton_case_is_exercised(monkeypatch):
+    # cases j and k must hit the non-converged branch of the one-group fit (matched to R in
+    # test_tagwise_matches_r[j/k]); guard against the case silently losing that property
+    flags = []
+    orig = edger._glm_one_group
+
+    def spy(*args, **kwargs):
+        beta, conv = orig(*args, **{**kwargs, "return_conv": True})
+        flags.append(conv)
+        return beta
+
+    monkeypatch.setattr(edger, "_glm_one_group", spy)
+    _run("j")
+    _run("k")
+    assert any(not c.all() for c in flags)
+
+
+def test_zero_library_cell_raises_like_r():
+    # R: aveLogCPM offset log(lib.size) = -Inf -> "offsets must be finite values"
+    c = REF["z"]
+    assert "finite" in c["error"]
+    with pytest.raises(EdgeRError, match="offsets must be finite values"):
+        estimate_disp_tagwise(c["y"], c["offset"], robust=bool(c["robust"]))
 
 
 def test_degenerate_genes_get_trended_value():

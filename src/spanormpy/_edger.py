@@ -522,11 +522,11 @@ def _maximize_interpolant(x, y):
 # ----------------------------------------------------------------------------
 # glm: one group, deviance, adjusted profile likelihood
 # ----------------------------------------------------------------------------
-def _glm_one_group(y, offset, disp, start=None, maxit=50, tol=1e-10):
+def _glm_one_group(y, offset, disp, start=None, maxit=50, tol=1e-10, return_conv=False):
     """edgeR glm_one_group_vec / fit_one_group_mat for unit weights; rows are genes.
 
     y, offset: (G, n); disp: (G,) or (G, n); start: (G,) or None.
-    Returns beta (G,).
+    Returns beta (G,) (and a convergence flag per gene if ``return_conv``).
     """
     G, n = y.shape
     disp = np.broadcast_to(
@@ -538,6 +538,7 @@ def _glm_one_group(y, offset, disp, start=None, maxit=50, tol=1e-10):
     # Poisson closed form (all-zero dispersion, unit weights)
     pois = np.all(disp == 0, axis=1)
     beta = np.empty(G)
+    conv = np.ones(G, dtype=bool)
     with np.errstate(all="ignore"):
         if np.any(pois):
             sc = y[pois].sum(axis=1)
@@ -565,12 +566,19 @@ def _glm_one_group(y, offset, disp, start=None, maxit=50, tol=1e-10):
                 info = (mu / den).sum(axis=1)
                 step = dl / info
                 cur[idx] += step
-                conv = np.abs(step) < tol
-                res[idx[conv]] = cur[idx[conv]]
-                active[idx[conv]] = False
-            res[active] = cur[active]  # not converged: R leaves this undefined
+                done = np.abs(step) < tol
+                res[idx[done]] = cur[idx[done]]
+                active[idx[done]] = False
+            # Not converged: edgeR's C code never assigns `beta` (`ocoef` is an uninitialised
+            # local in fit_one_group_mat), and R observes ~4.6e-310, i.e. effectively 0.
+            # The uninitialised local keeps the value of the previous Newton-fitted row
+            # (same stack slot, reused across the row loop); the first row reads ~0.
+            conv_nr = ~active
+            for i in np.where(active)[0]:
+                res[i] = res[i - 1] if i > 0 else 0.0
             beta[nr] = res
-    return beta
+            conv[nr] = conv_nr | allzero
+    return (beta, conv) if return_conv else beta
 
 
 def _unit_nb_deviance(y, mu, phi):
@@ -1419,6 +1427,9 @@ def estimate_disp(
     overall = float(_maximize_interpolant(spline_pts, l0.sum(axis=0, keepdims=True))[0])
     common = 0.1 * 2.0**overall
 
+    if np.any(lib_size <= 0):
+        # aveLogCPM passes offset = log(lib.size); a zero-count cell gives -Inf
+        raise EdgeRError("offsets must be finite values")
     ave = _ave_log_cpm(y, lib_size, common)
     out1 = _wleb(spline_pts, l0, ave[sel], span=None, trend=True, individual=False, m0_out=True)
     span = out1["span"]
@@ -1439,6 +1450,8 @@ def estimate_disp(
     s2 = dev / df_resid
     s2[df_resid == 0] = 0
     s2 = np.maximum(s2, 0)
+    dfp = df_resid[df_resid > 0]
+    unequal_df = not (dfp.size > 0 and dfp.min() == dfp.max())
     prior_df = _squeeze_var_prior_df(s2, df_resid, ave[sel], robust, winsor_tail_p)
     prior_df = np.broadcast_to(np.asarray(prior_df, dtype=float), (nsel,)).copy()
     prior_n = prior_df / (nlibs - ncoef)
@@ -1474,6 +1487,7 @@ def estimate_disp(
         "spline_pts": spline_pts,
         "sel": sel,
         "ave_log_cpm": ave,
+        "unequal_df": unequal_df,
     }
 
 

@@ -123,4 +123,34 @@ out$h <- run_case(y_h, offs_h)
 y_i <- y_h[1:2, , drop = FALSE]
 out$i <- run_case(y_i, matrix(0, 2, 15))
 
+# (j, k) sparse, strongly overdispersed tiny problems for which the one-group Newton fit fails
+# to converge in some APL grid columns; edgeR then returns an unassigned (uninitialised) C local.
+# Generator and seeds (5012, 5144) come from a random R-vs-Python fuzz of estimateDisp.
+fuzz_case <- function(seed) {
+  set.seed(seed)
+  G <- sample(c(3, 4, 5, 8, 15, 40, 100, 250), 1)
+  n <- sample(c(4, 6, 10, 30, 100, 400, 1000), 1)
+  mu <- exp(rnorm(G, sample(c(-1, 0.5, 2), 1), sample(c(0.5, 1.5), 1)))
+  lib <- exp(rnorm(n, 0, 0.5))
+  size <- sample(c(0.3, 2, 20, 1e4), 1)
+  off <- matrix(rnorm(G, 0, 0.3), G, n) + matrix(log(lib), G, n, byrow = TRUE)
+  typ <- sample(1:3, 1)
+  if (typ >= 2) {
+    lowc <- sample(n, max(1, n %/% 5)); lowg <- sample(G, max(1, G %/% 3))
+    off[lowg, lowc] <- off[lowg, lowc] - sample(c(8, 14, 25), 1)
+  }
+  y <- matrix(rnbinom(G * n, mu = exp(off) * mu, size = size), G, n)
+  if (typ == 3 && G > 3) { y[sample(G, 1), ] <- 0; y[sample(G, 1), ] <- 0 }
+  for (j in which(colSums(y) == 0)) y[sample(G, 1), j] <- 1
+  storage.mode(y) <- "double"
+  list(y = y, off = off)
+}
+fz <- fuzz_case(5012); out$j <- run_case(fz$y, fz$off)
+fz <- fuzz_case(5144); out$k <- run_case(fz$y, fz$off)
+# (z) a cell with zero total counts: aveLogCPM's offset log(lib.size) is -Inf and R errors
+y_z <- y_a[1:30, ]; y_z[, 7] <- 0
+err_z <- tryCatch({estimateDisp(y_z, matrix(1, ncol(y_z)), offset = matrix(0, 30, ncol(y_z)),
+                                tagwise = TRUE, robust = TRUE); ""}, error = function(e) conditionMessage(e))
+out$z <- list(y = y_z, offset = matrix(0, 30, ncol(y_z)), robust = 1L, error = err_z)
+
 write_ref(out, "edger")

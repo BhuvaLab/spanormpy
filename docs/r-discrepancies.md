@@ -46,3 +46,14 @@ edgeR's C routine evaluates the small-dispersion (phi < 1e-4) Poisson-like branc
 `2/3*resid`, which is C integer division and equals 0. `spanormpy._edger._unit_nb_deviance`
 reproduces this exactly (`0.0 * resid`), so deviances and the residual variances fed to
 `squeezeVar` agree with R. It only matters for trended dispersions below 1e-4.
+
+## edgeR one-group Newton fit: unassigned coefficient on non-convergence (matched)
+
+In `glm_one_group_vec` the output `*beta` is only assigned when the Newton iteration converges
+within `maxit` (50); `fit_one_group_mat` / `average_log_cpm` then copy the uninitialised local
+`ocoef` into the result. R observes ~4.6e-310 (effectively 0) for the first such row and the
+previous row's value afterwards (same stack slot). `spanormpy._edger._glm_one_group` reproduces
+that (0.0 for a leading row, otherwise the previous Newton-fitted row's coefficient). This is
+undefined behaviour in edgeR, matched empirically on the R-vs-Python fuzz (all non-converging
+scenarios reproduce); it affects very sparse, strongly overdispersed genes at large grid
+dispersions.
