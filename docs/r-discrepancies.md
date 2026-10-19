@@ -192,3 +192,12 @@ null reuses `polish_spanorm_fit`, with the full fit's recorded `psi_method`, `ls
 `top_svgs` does not run `checkSPE` (R validates the counts); it only needs the SVG columns. R's
 `topSVGs` keeps rows whose FDR is `NA` when filtering (`NA <= fdr` subsets to `NA` rows); `top_svgs`
 drops them.
+
+## top_svgs and NaN FDRs
+
+R's `topSVGs` subsets with `results[results$svg.fdr <= fdr, ]`; a `NA` FDR makes that an all-NA row
+(named `NA`, `NA.1`, ...), which `order()` puts last and `min(n, nrow)` counts. This is an indexing
+artefact, but `top_svgs` reproduces the row count and order: genes with a NaN FDR are returned after
+the sorted finite rows, in gene order, counted toward `n`, with all statistics NaN. Only the names
+differ: they keep their real gene names instead of R's `NA` junk names. `top_svgs` also takes `layer`
+and runs the counts check R's `checkSPE` does (it supersedes the earlier note that counts are not checked).

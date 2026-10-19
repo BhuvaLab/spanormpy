@@ -6,7 +6,6 @@ injects R's dispersion subset into the null fit, so the null fit and every stati
 at the iterative-fit tolerance (rtol 1e-6); p-values and FDRs compare on the log scale.
 """
 
-import re
 import warnings
 
 import anndata
@@ -415,6 +414,11 @@ def test_edge_cases_single_gene_and_zero_gene():
     a.X[:, 0] = 0  # first gene has zero expression
     store_fit(a, create_test_spanorm(10, 10), "spanorm")
     spanorm_svg(a, verbose=False)
+    assert len(a.var) == 10
+    for c in ("svg_F", "svg_p", "svg_fdr", "svg_F_raw"):
+        assert np.isfinite(a.var[c]).all(), c
+    assert ((a.var["svg_p"] >= 0) & (a.var["svg_p"] <= 1)).all()
+    assert (a.var["svg_F"] >= 0).all()
 
 
 def test_results_stable_across_runs():
@@ -599,7 +603,6 @@ def test_psi_range_compared_under_profile_only(ref):
 
 
 def test_polish_spanorm_removes_exactly_the_columns_spanorm_svg_writes(ref):
-    pol = ref["pol"]
     a = polished_adata(ref)
     before = set(a.var.columns)
     spanorm_svg(a, backend="cpu", verbose=False)
@@ -611,7 +614,6 @@ def test_polish_spanorm_removes_exactly_the_columns_spanorm_svg_writes(ref):
         polish_spanorm(a, verbose=False)
     assert not ({c for c in a.var.columns if c.startswith("svg_")})
     assert set(a.var.columns) >= before
-    del pol
 
 
 def test_view_and_gene_subset_reuse_the_stored_fits(ref, recwarn):
@@ -671,4 +673,36 @@ def test_svg_keeps_var_columns_and_overwrites_in_place(ref):
     with pytest.warns(UserWarning, match="SVG results exist"):
         spanorm_svg(a, backend="cpu", verbose=False)
     np.testing.assert_allclose(a.var["svg_F"], first, rtol=0, atol=0)
-    assert re.fullmatch(r"svg_(F|p|fdr|F_raw)", "svg_F_raw")
+
+
+def test_top_svgs_nan_fdr_rows_match_r():
+    """R keeps one all-NA row per NaN FDR, last in order and counted toward n."""
+    r = load_ref("svg_top")
+    fdr = np.asarray(r["fdr"])
+    a = create_test_spe(n_genes=len(fdr), n_spots=5)
+    a.var["svg_F"] = np.arange(1, len(fdr) + 1) * 1.5
+    a.var["svg_p"] = fdr / 2
+    a.var["svg_fdr"] = fdr
+    for k in "abcd":
+        c = r[k]
+        res = top_svgs(a, n=int(c["n"]), fdr=float(c["fdr"]))
+        assert len(res) == int(c["nrow"]), k
+        np.testing.assert_array_equal(res["svg_F"].to_numpy(), np.asarray(c["F"]))  # NaN == NaN
+        isna = np.isnan(res["svg_fdr"].to_numpy())
+        rn = np.asarray(c["rownames"])
+        np.testing.assert_array_equal(isna, np.char.startswith(rn.astype(str), "NA"))
+        np.testing.assert_array_equal([g.replace("gene", "g") for g in res.index[~isna]], rn[~isna])
+        # the NaN rows keep their real gene names, in gene order
+        assert list(res.index[isna]) == [g for g in a.var_names[np.isnan(fdr)]][: isna.sum()]
+
+
+def test_top_svgs_checks_counts_like_checkspe():
+    a = with_model()
+    spanorm_svg(a, verbose=False)
+    with pytest.raises(ValueError, match="layer 'nope' not found"):
+        top_svgs(a, layer="nope")
+    a.X[0, 0] = 0.5
+    with pytest.raises(ValueError):
+        top_svgs(a)
+    a.layers["raw"] = np.round(np.abs(a.X))
+    assert len(top_svgs(a, layer="raw")) > 0

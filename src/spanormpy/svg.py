@@ -414,7 +414,9 @@ def spanorm_svg(
     return result if copy else None
 
 
-def top_svgs(data, n: int = 10, fdr: float = 1.0, table_key: str | None = None) -> pd.DataFrame:
+def top_svgs(
+    data, n: int = 10, fdr: float = 1.0, layer: str | None = None, table_key: str | None = None
+) -> pd.DataFrame:
     """The top SVGs from :func:`spanorm_svg` (R ``topSVGs``).
 
     Parameters
@@ -425,24 +427,35 @@ def top_svgs(data, n: int = 10, fdr: float = 1.0, table_key: str | None = None) 
         Maximum number of genes returned.
     fdr
         False discovery rate threshold in ``[0, 1]``; genes with ``svg_fdr <= fdr`` are kept.
+    layer
+        Counts layer (default ``X``). Like R's ``checkSPE``, the counts are validated; the SVG
+        columns are the only other thing checked.
     table_key
         The table to read, for ``SpatialData``.
 
     Returns
     -------
     A frame with columns ``svg_F``, ``svg_p`` and ``svg_fdr``, indexed by gene name and sorted
-    by FDR (ties in gene order).
+    by FDR (ties in gene order). A gene whose FDR is NaN is kept, with all-NaN statistics, after
+    the sorted finite rows and counted toward ``n``, as R's ``results[svg.fdr <= fdr, ]`` keeps
+    one all-NA row per NaN (R names them ``NA``, ``NA.1``, ...; here they keep the gene name).
     """
     if not n > 0:
         raise ValueError("n > 0 is not TRUE")
     if not (0 <= fdr <= 1):
         raise ValueError("fdr >= 0 && fdr <= 1 is not TRUE")
-    adata, _ = resolve_input(data, None, "spatial", table_key)
+    adata, _ = resolve_input(data, layer, "spatial", table_key)
+    get_counts(adata, layer)  # R: checkSPE(spe)
     if not all(c in adata.var.columns for c in _TABLE_COLUMNS):
         raise ValueError("SVG results not found in 'adata'. Please run 'spanorm_svg' first.")
     res = adata.var[list(_TABLE_COLUMNS)].copy()
-    res = res[res["svg_fdr"] <= fdr]
-    res = res.iloc[np.argsort(res["svg_fdr"].to_numpy(), kind="stable")]
+    q = res["svg_fdr"].to_numpy()
+    nan = np.isnan(q)
+    keep = np.flatnonzero((q <= fdr) | nan)
+    finite = keep[~nan[keep]]
+    finite = finite[np.argsort(q[finite], kind="stable")]
+    res = res.iloc[np.concatenate([finite, keep[nan[keep]]])].copy()
+    res.loc[res["svg_fdr"].isna(), list(_TABLE_COLUMNS)] = np.nan  # R's all-NA rows
     return res.iloc[: min(int(n), len(res))]
 
 
