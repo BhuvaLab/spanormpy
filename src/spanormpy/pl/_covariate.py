@@ -54,7 +54,12 @@ def plot_covariate(adata, covariate="biology", color=None, name="spanorm", **kwa
             raise TypeError(f"'{bad}' is not accepted by plot_covariate")
     if color is None:
         raise ValueError("no genes selected for the plot")
+    if not isinstance(color, str):
+        raise TypeError("'color' must be a single gene name (str)")
     if color not in adata.var_names:
         raise ValueError("no genes selected for the plot")
+    if (adata.var_names == color).sum() != 1:
+        raise ValueError(f"gene '{color}' is duplicated in 'adata.var_names'")
+    kwargs.setdefault("title", covariate)
     vals = covariate_values(adata, covariate, [color], name)[:, 0]
-    return _draw(adata, vals, str(color), title=covariate, **kwargs)
+    return _draw(adata, vals, str(color), **kwargs)

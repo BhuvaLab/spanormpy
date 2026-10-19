@@ -11,8 +11,7 @@ import pandas as pd
 import pytest
 from matplotlib import pyplot as plt
 from matplotlib.collections import PathCollection
-from tests._ref import load_ref
-from tests.test_polish_spanorm import fit_from_ref
+from tests._ref import fit_from_ref, load_ref
 
 from spanormpy import pl
 from spanormpy._fit import store_fit
@@ -139,12 +138,25 @@ def test_img_added_and_scaled(fitted):
 def test_crop_limits(fitted):
     add_image(fitted)
     xy = fitted.obsm["spatial"] * 0.05
+    pad = 100.0 / 2 * 0.05
     ax = pl.plot_spatial(fitted, img=True, crop=True)
-    np.testing.assert_allclose(ax.get_xlim(), [xy[:, 0].min(), xy[:, 0].max()])
-    np.testing.assert_allclose(sorted(ax.get_ylim()), [xy[:, 1].min(), xy[:, 1].max()])
-    xy = fitted.obsm["spatial"]
-    ax = pl.plot_spatial(fitted, crop=True)
-    np.testing.assert_allclose(ax.get_xlim(), [xy[:, 0].min(), xy[:, 0].max()])
+    np.testing.assert_allclose(ax.get_xlim(), [xy[:, 0].min() - pad, xy[:, 0].max() + pad])
+    np.testing.assert_allclose(sorted(ax.get_ylim()), [xy[:, 1].min() - pad, xy[:, 1].max() + pad])
+    # R: crop only acts with img
+    a1 = pl.plot_spatial(fitted, crop=True)
+    a2 = pl.plot_spatial(fitted, crop=False)
+    assert a1.get_xlim() == a2.get_xlim() and a1.get_ylim() == a2.get_ylim()
+
+
+def test_string_annotation_and_title(fitted):
+    fitted.obs["s"] = pd.Series(np.where(fitted.obsm["spatial"][:, 0] > 0, "u", "v"), index=fitted.obs_names, dtype=object)
+    assert n_points(pl.plot_spatial(fitted, "annotation", "s")) == fitted.n_obs
+    fitted.obs["s2"] = fitted.obs["s"].astype("string")
+    assert n_points(pl.plot_spatial(fitted, "annotation", "s2")) == fitted.n_obs
+    ax = pl.plot_covariate(fitted, color="g1", title="mine")
+    assert ax.get_title() == "mine"
+    with pytest.raises(TypeError, match="single gene"):
+        pl.plot_covariate(fitted, color=["g1"])
 
 
 def test_circles_and_ax(fitted):

@@ -7,6 +7,8 @@ from pathlib import Path
 import h5py
 import numpy as np
 
+from spanormpy._fit import SpaNormFit
+
 REF_DIR = Path(__file__).parent / "ref" / "data"
 
 
@@ -41,3 +43,24 @@ def load_ref(topic: str) -> dict:
     """
     with h5py.File(REF_DIR / f"{topic}.h5", "r") as f:
         return {k: _read(f[k]) for k in f}
+
+
+def fit_from_ref(d, batch=None) -> SpaNormFit:
+    lam = np.atleast_1d(d["lambda_a"]).astype(float)
+    return SpaNormFit(
+        ngenes=int(d["ngenes"]),
+        ncells=int(d["ncells"]),
+        gene_model="nb",
+        df_tps=np.atleast_1d(d["df_tps"]).astype(int),
+        sample_p=0.25,
+        lambda_a=lam,
+        batch=batch,
+        W=np.asarray(d["W"]),
+        alpha=np.asarray(d["alpha"]),
+        gmean=np.asarray(d["gmean"]),
+        psi=np.asarray(d["psi"]),
+        wtype=np.atleast_1d(d["wtype"]).astype(str),
+        loglik=np.atleast_1d(d["loglik"]).astype(float),
+        sampling=np.atleast_1d(d["sampling"]).astype(str),
+        colnames=np.atleast_1d(d["W_colnames"]).astype(str),
+    )

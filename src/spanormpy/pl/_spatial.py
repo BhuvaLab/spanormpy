@@ -43,6 +43,8 @@ def _image(adata, library_id, img_key):
 def _gene_values(adata, gene, layer):
     if gene not in adata.var_names:
         raise ValueError(f"gene '{gene}' not found in 'adata.var_names'")
+    if (adata.var_names == gene).sum() != 1:
+        raise ValueError(f"gene '{gene}' is duplicated in 'adata.var_names'")
     if layer is not None and layer not in adata.layers:
         raise ValueError(f"layer '{layer}' not found in 'adata'")
     x = adata[:, gene].layers[layer] if layer is not None else adata[:, gene].X
@@ -103,8 +105,8 @@ def _draw(adata, values, label, *, title=None, img=False, crop=False, img_alpha=
     if values is None:
         c, extra = "tab:blue", {}
     elif isinstance(values, pd.Series) and (
-        isinstance(values.dtype, pd.CategoricalDtype) or values.dtype == object
-        or values.dtype == bool
+        not pd.api.types.is_numeric_dtype(values.dtype)
+        or pd.api.types.is_bool_dtype(values.dtype)
     ):
         cat = values.astype("category")
         cats = list(cat.cat.categories)
@@ -122,7 +124,7 @@ def _draw(adata, values, label, *, title=None, img=False, crop=False, img_alpha=
         c, extra = cb_values, {"cmap": cmap}
 
     if circles:
-        r = size if size is not None else (diam / 2 if diam is not None else 100.0)
+        r = size if size is not None else 100.0
         pc = PatchCollection([Circle((x, y), r * sf) for x, y in xy], **kwargs)
         if cb_values is not None:
             pc.set_array(cb_values)
@@ -141,12 +143,10 @@ def _draw(adata, values, label, *, title=None, img=False, crop=False, img_alpha=
     if legend is not None:
         ax.legend(handles=legend, title=label, loc="upper center",
                   bbox_to_anchor=(0.5, -0.05), ncol=min(len(legend), 4), frameon=False)
-    if crop:
-        ax.set_xlim(xy[:, 0].min(), xy[:, 0].max())
-        lo, hi = xy[:, 1].min(), xy[:, 1].max()
-        ax.set_ylim((hi, lo) if img else (lo, hi))
-    elif img:
-        pass  # imshow already set the image extent (y pointing down)
+    if crop and img:  # R: `if (crop & img)`
+        pad = (r * sf if circles else (diam or 0.0) / 2 * sf)
+        ax.set_xlim(xy[:, 0].min() - pad, xy[:, 0].max() + pad)
+        ax.set_ylim(xy[:, 1].max() + pad, xy[:, 1].min() - pad)  # y points down
     ax.set_aspect("equal")
     if title is not None:
         ax.set_title(title)
@@ -177,18 +177,19 @@ def plot_spatial(adata, what="annotation", color=None, layer=None, basis=None, i
         (scanpy Visium layout); coordinates are scaled by ``tissue_<img_key>_scalef``.
         An error is raised when no image is present.
     crop
-        Limit the axes to the extent of the spots.
+        Limit the axes to the extent of the spots (padded by the spot radius). Requires
+        ``img=True`` and is ignored otherwise, as in R.
     img_alpha
         Image opacity in [0, 1].
     size
         Marker area (points^2), or the circle radius in full-resolution pixels when
-        ``circles=True`` (default: the Visium spot radius, else 100, as in R).
+        ``circles=True`` (default 100, as in R; the radius is multiplied by the image scale factor).
     circles
         Draw spots as true circles in data units (slower for large data).
     ax
         Axes to draw on; a new figure is created when ``None``.
     show
-        Call ``plt.show()`` when true. The axes are always returned.
+        Call ``plt.show()`` when true (``None`` is the same as ``False``). The axes are always returned.
     library_id, img_key, spatial_key
         Entry of ``uns["spatial"]`` (default: the first), image resolution
         (``"hires"``/``"lowres"``) and ``obsm`` key of the coordinates.

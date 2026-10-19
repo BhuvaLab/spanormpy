@@ -15,7 +15,8 @@ import pytest
 import scipy.sparse as sp
 from scipy import stats
 from tests._ref import load_ref
-from tests.test_polish_spanorm import compare_fit, fit_from_ref, make_adata
+from tests._ref import fit_from_ref
+from tests.test_polish_spanorm import compare_fit, make_adata
 
 import spanormpy._fitnb as fitnb_mod
 from spanormpy import polish_spanorm, spanorm, spanorm_svg, top_svgs

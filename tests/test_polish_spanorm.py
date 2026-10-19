@@ -15,7 +15,7 @@ import pandas as pd
 import pytest
 import scipy.sparse as sp
 from scipy import optimize
-from tests._ref import load_ref
+from tests._ref import fit_from_ref, load_ref
 
 from spanormpy import _polish_model as pm
 from spanormpy import polish_spanorm, spanorm
@@ -42,27 +42,6 @@ def ref():
 
 
 # ------------------------------------------------------------------------------ helpers
-
-
-def fit_from_ref(d, batch=None) -> SpaNormFit:
-    lam = np.atleast_1d(d["lambda_a"]).astype(float)
-    return SpaNormFit(
-        ngenes=int(d["ngenes"]),
-        ncells=int(d["ncells"]),
-        gene_model="nb",
-        df_tps=np.atleast_1d(d["df_tps"]).astype(int),
-        sample_p=0.25,
-        lambda_a=lam,
-        batch=batch,
-        W=np.asarray(d["W"]),
-        alpha=np.asarray(d["alpha"]),
-        gmean=np.asarray(d["gmean"]),
-        psi=np.asarray(d["psi"]),
-        wtype=np.atleast_1d(d["wtype"]).astype(str),
-        loglik=np.atleast_1d(d["loglik"]).astype(float),
-        sampling=np.atleast_1d(d["sampling"]).astype(str),
-        colnames=np.atleast_1d(d["W_colnames"]).astype(str),
-    )
 
 
 def make_adata(Y, coords, genes=None):

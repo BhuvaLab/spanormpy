@@ -211,3 +211,7 @@ in the same situation (use a smaller `nsvgs` or set the FDRs). `percentVar`/`var
 
 `spanorm_pca(n_jobs=...)` stands in for R's `BPPARAM` but has no effect (the decomposition uses BLAS threads).
 `random_state` seeds the optional randomised SVD (R's `BSPARAM` algorithms have their own RNG use).
+
+## Plotting
+
+`plot_spatial(crop=True)` only acts together with `img=True` (R: `crop & img`); R drops image pixels outside the spot extent, here the axis limits are set to the extent padded by the spot radius so edge spots are not clipped. With `circles=True` the default radius is R's fixed 100 (times the image scale factor). `show=None` means `False`, and the Axes is always returned.
