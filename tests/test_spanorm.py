@@ -365,3 +365,37 @@ def test_spatialdata_input(dlpfc_small, ref, monkeypatch):
     np.testing.assert_allclose(got, r["logcounts"].T, rtol=RTOL)
     with pytest.raises(ValueError, match="not found"):
         spanorm(sdata, table_key="nope", verbose=False)
+
+
+def test_spatialdata_copy_leaves_original_untouched():
+    sd = pytest.importorskip("spatialdata")
+    a = small_adata()
+    sdata = sd.SpatialData(tables={"table": a})
+    before = a.copy()
+    out = spanorm(sdata, copy=True, **FAST)
+    assert isinstance(out, sd.SpatialData) and out is not sdata
+    assert sdata.tables["table"] is a
+    assert "logcounts" not in a.layers and "spanorm_alpha" not in a.varm
+    np.testing.assert_array_equal(a.X, before.X)
+    assert list(a.obs.columns) == list(before.obs.columns)
+    assert "logcounts" in out.tables["table"].layers
+    assert out.tables["table"] is not a
+
+
+def test_refit_with_given_size_factors_drops_stale_computed_ones():
+    a = small_adata()
+    spanorm(a, **FAST)
+    assert "spanorm_size_factors" in a.obs
+    with pytest.warns(UserWarning, match="overwritten"):
+        spanorm(a, overwrite=True, size_factors=np.linspace(0.5, 1.5, a.n_obs), **FAST)
+    assert "spanorm_size_factors" not in a.obs
+
+
+def test_unknown_kwargs_warn_known_pass_through():
+    a = small_adata()
+    with pytest.warns(UserWarning, match="unrecognised arguments ignored: bogus, other"):
+        spanorm(a, bogus=1, other=2, **FAST)
+    b = small_adata()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        spanorm(b, gpu_mem_budget=int(1e9), winsor=3, **FAST)

@@ -26,10 +26,11 @@ def resolve_input(
     """Return ``(table, write_back)`` for an AnnData or a SpatialData object.
 
     ``write_back(adata)`` puts a (possibly replaced) table back into the container; for
-    AnnData it is a no-op because the object is modified in place.
+    AnnData it is a no-op because the object is modified in place. ``write_back(adata,
+    copy=True)`` returns a new container holding ``adata`` and leaves the original untouched.
     """
     if isinstance(data, AnnData):
-        return data, lambda a: None
+        return data, lambda a, copy=False: a if copy else None
     if type(data).__module__.split(".")[0] == "spatialdata":
         tables = data.tables
         if len(tables) == 0:
@@ -45,9 +46,19 @@ def resolve_input(
             raise ValueError(f"table '{table_key}' not found in the SpatialData object")
         key = table_key
 
-        def write_back(a: AnnData) -> None:
-            if tables[key] is not a:
-                tables[key] = a
+        def write_back(a: AnnData, copy: bool = False):
+            if not copy:
+                if tables[key] is not a:
+                    tables[key] = a
+                return data
+            # new container with the result table; other elements are shared by reference
+            return type(data)(
+                images=dict(data.images),
+                labels=dict(data.labels),
+                points=dict(data.points),
+                shapes=dict(data.shapes),
+                tables={**{k: v for k, v in tables.items() if k != key}, key: a},
+            )
 
         return tables[key], write_back
     raise TypeError("'data' must be an AnnData or a SpatialData object")

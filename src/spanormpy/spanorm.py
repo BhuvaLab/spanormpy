@@ -21,6 +21,7 @@ from .size_factors import quick_cluster, sum_factors
 
 _ADJ_METHODS = ("auto", "logpac", "pearson", "medbio", "meanbio")
 _BACKENDS = ("auto", "cpu", "gpu")
+_FIT_PASSTHROUGH = {"gpu_mem_budget", "winsor"}  # R `...` keys forwarded to fitSpaNormNB
 
 
 def _match_arg(value, choices, name: str) -> str:
@@ -330,12 +331,18 @@ def spanorm(
     copy
         Return a modified copy instead of modifying ``data`` in place.
     **kwargs
-        Ignored (R's ``...``).
+        R's ``...``: ``gpu_mem_budget`` and ``winsor`` are passed to the NB fit; any other
+        key is ignored with a ``UserWarning``.
 
     Returns
     -------
-    ``None``, or the modified ``AnnData`` table when ``copy=True``.
+    ``None``, or with ``copy=True`` a modified copy of the same container type (an
+    ``AnnData``, or a new ``SpatialData`` whose table is the result; the input is untouched).
     """
+    unknown = sorted(set(kwargs) - _FIT_PASSTHROUGH)
+    if unknown:
+        warnings.warn(f"unrecognised arguments ignored: {', '.join(unknown)}", stacklevel=2)
+    passthrough = {k: v for k, v in kwargs.items() if k in _FIT_PASSTHROUGH}
     adata, write_back = resolve_input(data, layer, spatial_key, table_key)
     if copy:
         adata = adata.copy()
@@ -386,6 +393,7 @@ def spanorm(
             maxit_nb=maxit_nb,
             maxit_psi=maxit_psi,
             maxn_psi=maxn_psi,
+            **passthrough,
         )
 
     msgfun("(2/2) Normalising data")
@@ -408,10 +416,12 @@ def spanorm(
         store_fit(adata, fit, "spanorm")
     if computed_sf is not None:
         adata.obs["spanorm_size_factors"] = computed_sf
+    elif refit and "spanorm_size_factors" in adata.obs:
+        del adata.obs["spanorm_size_factors"]  # stale: this fit used user-supplied factors
     if "logcounts" in adata.layers:
         warnings.warn("'logcounts' exists and will be overwritten", stacklevel=2)
     out = normmat.T
     adata.layers["logcounts"] = sp.csr_matrix(out) if sp.issparse(Y) else np.ascontiguousarray(out)
     adata.uns.setdefault("spanorm", {})["adj_method"] = adj_method
-    write_back(adata)
-    return adata if copy else None
+    result = write_back(adata, copy=copy)
+    return result if copy else None
