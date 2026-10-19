@@ -35,6 +35,7 @@ exclude = ["tests/ref/data", "tests/ref/Rlib", ".superpowers", "docs/superpowers
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 markers = ["gpu: test requires a CUDA device"]
 
 [tool.ruff]
