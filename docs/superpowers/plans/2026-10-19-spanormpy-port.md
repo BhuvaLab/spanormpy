@@ -428,7 +428,7 @@ Global for Tasks 20–22:
 **Files:** Create `site/_quarto.yml`, `site/index.qmd`, `site/get-started.qmd`, `site/styles.scss`, `site/.gitignore`; modify `.Rbuildignore` (`^site$`).
 
 - [ ] **Step 1:** Create the worktree: `git -C ../SpaNorm worktree add ../SpaNorm-site -b docs/quarto-site master`.
-- [ ] **Step 2:** Write `_quarto.yml` with `project: type: website`, the navbar (Home, Get started, Articles, Reference ▸ R / Python, R vs Python, News, GitHub), the Bootstrap 5 cosmo theme close to pkgdown, and `execute: freeze: auto`. Set reticulate to `RETICULATE_PYTHON=/scratch/user/uqdbhuva/envs/spanormpy/bin/python` through a `site/_environment` file.
+- [ ] **Step 2:** Write `_quarto.yml` with `project: type: website`, the navbar (Home, Get started, Articles, Reference ▸ R / Python, R vs Python, News, GitHub), the Bootstrap 5 cosmo theme close to pkgdown (no freeze). Set reticulate to `RETICULATE_PYTHON=/scratch/user/uqdbhuva/envs/spanormpy/bin/python` through a `site/_environment` file.
 - [ ] **Step 3:** Write `get-started.qmd` as a port of `vignettes/SpaNorm.Rmd`. Every computational step is a `::: {.panel-tabset group="language"}` block with an R tab (knitr chunk) and a Python tab (python chunk via reticulate, spanormpy API on the same data loaded from an h5ad export of HumanDLPFC). Keep the computation small (`sample.p` / `sample_p` = 0.05, `df.tps` = 2).
 - [ ] **Step 4:** Run `quarto render site` and confirm it exits 0 and that `_site/get-started.html` contains both tabs with outputs and figures. Commit sources only. Nothing built (`_freeze`, `_site`) is committed.
 
@@ -437,18 +437,19 @@ Global for Tasks 20–22:
 **Files:** Create `site/reference/r/` (generated), `site/reference/python/` (generated), `site/scripts/build_reference.sh`, `site/articles/{svg-pca,polishing,large-data-gpu}.qmd`, `site/r-vs-python.qmd`, `site/news.qmd`.
 
 - [ ] **Step 1:** `build_reference.sh` installs `altdoc` into `site/_rlib` (git-ignored) and converts SpaNorm's Rd files to Quarto pages under `reference/r/`, with an index grouped like pkgdown's reference. It also runs `quartodoc build` with the config in `_quarto.yml` (package `spanormpy`, sections Normalisation / SVG & PCA / Polishing / Low-level / Plotting / Backend), producing `reference/python/`.
-- [ ] **Step 2:** Write the articles, each with R | Python tabs, frozen. Large-data-GPU summarises `docs/benchmark.md` from spanormpy and shows `backend="gpu"` alongside `backend = "gpu"`.
+- [ ] **Step 2:** Write the articles, each with R | Python tabs, executed by CI (keep them light). Large-data-GPU summarises `docs/benchmark.md` from spanormpy and shows `backend="gpu"` alongside `backend = "gpu"`.
 - [ ] **Step 3:** `r-vs-python.qmd` includes spanormpy's `docs/r-to-python.md` and `docs/r-discrepancies.md`. A pre-render script copies them from `$SPANORMPY_DIR` (default `../spanormpy`) into `site/_includes/`.
 - [ ] **Step 4:** Run `bash site/scripts/build_reference.sh && quarto render site`. Expected: it exits 0, every navbar link resolves (check with a small link check over `_site/*.html`), and every exported R function and every Python name in `spanormpy.__all__` has a page. Commit.
 
 ### Task 22: CI workflow and cross-links
+- Generated reference pages are built in CI by build_reference.sh and are git-ignored, never committed.
 
 **Files:** Create `.github/workflows/quarto-site.yaml`; delete `.github/workflows/pkgdown.yaml` and `_pkgdown.yml` on this branch; modify spanormpy `README.md` and `docs/index.md` (in the spanormpy repo) to link the site.
 
 - [ ] **Step 1:** Write the workflow:
   - Trigger: `push: master`, `workflow_dispatch`, and `pull_request` (render only, no deploy on PRs).
   - Setup: `r-lib/actions/setup-r` + `setup-r-dependencies` (SpaNorm + altdoc + reticulate), `actions/setup-python` + `pip install git+https://github.com/BhuvaLab/spanormpy quartodoc`, and `quarto-dev/quarto-actions/setup`.
-  - Build: run `build_reference.sh`, then `quarto render site`. Frozen outputs mean nothing re-executes.
+  - Build: run `build_reference.sh`, then `quarto render site`. All chunks execute in CI (CPU torch); nothing built is committed.
   - Deploy: `quarto-dev/quarto-actions/publish` with `target: gh-pages` and `path: site`.
   - Pin action versions.
 - [ ] **Step 2:** Validate the YAML with `python -c "import yaml; yaml.safe_load(open(...))"` and `actionlint` if available. Re-run `quarto render site` from a clean clone of the branch to prove CI-equivalence offline.
