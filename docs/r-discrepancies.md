@@ -1,0 +1,1 @@
+# Discrepancies from R SpaNorm

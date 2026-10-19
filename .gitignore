@@ -1,0 +1,6 @@
+tests/ref/Rlib/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+.ruff_cache/
+docs/_build/

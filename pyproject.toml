@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "spanormpy"
+dynamic = ["version"]
+description = "Spatially-aware normalisation for spatial transcriptomics data (Python port of SpaNorm)"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "torch>=2.3",
+    "anndata>=0.10",
+    "pandas",
+    "python-igraph>=0.11",
+    "matplotlib>=3.8",
+    "h5py",
+]
+
+[project.optional-dependencies]
+spatial = ["spatialdata>=0.2"]
+dev = ["pytest", "scanpy>=1.10", "ruff", "pre-commit"]
+
+[tool.hatch.version]
+path = "src/spanormpy/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/spanormpy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["gpu: test requires a CUDA device"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
