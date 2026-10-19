@@ -266,6 +266,6 @@ above, docs tooling details, how `n_jobs` is implemented.
   - R vs Python: the name table plus intentional differences, taken from spanormpy's `docs/r-to-python.md` and `docs/r-discrepancies.md`.
   - News from NEWS.md, and GitHub links to both repos.
 - **Look:** Bootstrap 5, as SpaNorm's pkgdown uses, with a navbar and sidebar layout similar to pkgdown.
-- **Execution:** R chunks run with knitr and Python chunks with reticulate, using the spanormpy env. Outputs are stored with `freeze: auto` and the `_freeze/` directory is committed, so CI only renders.
+- **Execution (user decision):** the site exists only through GitHub Actions. Nothing built is committed: no `_freeze/`, no `_site/`, no generated reference pages, no large assets. CI runs every R chunk with knitr and every Python chunk with reticulate (CPU torch) on each build. The SpaNorm master branch, which goes to Bioconductor, carries only small site sources under `site/` (listed in `.Rbuildignore`). The website branch is squash-merged so no built blobs end up in history.
 - **CI:** a new `.github/workflows/quarto-site.yaml` replaces `pkgdown.yaml`. On pushes to master it installs R + SpaNorm + altdoc and Python + spanormpy (git) + quartodoc, renders, and deploys to `gh-pages`.
 - **Release gate:** nothing is merged into SpaNorm master and nothing is deployed until the user says so. Pushing the `docs/quarto-site` branch is fine.

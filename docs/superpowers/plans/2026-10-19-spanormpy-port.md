@@ -430,7 +430,7 @@ Global for Tasks 20–22:
 - [ ] **Step 1:** Create the worktree: `git -C ../SpaNorm worktree add ../SpaNorm-site -b docs/quarto-site master`.
 - [ ] **Step 2:** Write `_quarto.yml` with `project: type: website`, the navbar (Home, Get started, Articles, Reference ▸ R / Python, R vs Python, News, GitHub), the Bootstrap 5 cosmo theme close to pkgdown, and `execute: freeze: auto`. Set reticulate to `RETICULATE_PYTHON=/scratch/user/uqdbhuva/envs/spanormpy/bin/python` through a `site/_environment` file.
 - [ ] **Step 3:** Write `get-started.qmd` as a port of `vignettes/SpaNorm.Rmd`. Every computational step is a `::: {.panel-tabset group="language"}` block with an R tab (knitr chunk) and a Python tab (python chunk via reticulate, spanormpy API on the same data loaded from an h5ad export of HumanDLPFC). Keep the computation small (`sample.p` / `sample_p` = 0.05, `df.tps` = 2).
-- [ ] **Step 4:** Run `quarto render site` and confirm it exits 0 and that `_site/get-started.html` contains both tabs with outputs and figures. Commit, including `_freeze/`.
+- [ ] **Step 4:** Run `quarto render site` and confirm it exits 0 and that `_site/get-started.html` contains both tabs with outputs and figures. Commit sources only. Nothing built (`_freeze`, `_site`) is committed.
 
 ### Task 21: References, articles and the R vs Python page
 
