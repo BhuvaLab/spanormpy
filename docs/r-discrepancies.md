@@ -39,3 +39,10 @@ rcond straddle machine epsilon could in principle be classified differently.
 R's torch branch of `.newtonSolverBatch()$xcov` calls `torch_cholesky_inverse()` on the whole stack,
 which raises on a singular slice; its base-R branch returns `NA` for that slice. Python follows the
 base-R behaviour: failed slices are NaN and their neighbours are unaffected.
+
+## edgeR `compute_unit_nb_deviance` integer division (matched, not fixed)
+
+edgeR's C routine evaluates the small-dispersion (phi < 1e-4) Poisson-like branch with
+`2/3*resid`, which is C integer division and equals 0. `spanormpy._edger._unit_nb_deviance`
+reproduces this exactly (`0.0 * resid`), so deviances and the residual variances fed to
+`squeezeVar` agree with R. It only matters for trended dispersions below 1e-4.
