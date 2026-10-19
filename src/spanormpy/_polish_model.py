@@ -32,6 +32,7 @@ import torch
 
 from ._backend import as_tensor
 from ._polish_batch import mu_batch, nb_loglik_batch, offset_rows
+from ._settings import _match_arg
 from ._solver import nb_newton_solver
 from .polish import (  # looked up by name so tests can wrap them
     _dense_rows,
@@ -85,8 +86,7 @@ def spanorm_polish_problem(fit, cells: str = "all") -> dict:
     library size), ``A0`` (starting coefficients, genes x ncol(X)), ``psi`` and ``cells_idx``
     (boolean, one per cell).
     """
-    if cells not in ("all", "fit"):
-        raise ValueError("'cells' should be one of 'all', 'fit'")
+    cells = _match_arg(cells, ("all", "fit"), "cells")
     alpha = np.asarray(fit.alpha, dtype=float)
     a1s = alpha[:, 0]
     if np.ptp(a1s) > 1e-8 * max(1.0, abs(a1s[0])):

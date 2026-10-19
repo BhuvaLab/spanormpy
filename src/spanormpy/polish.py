@@ -39,6 +39,7 @@ from ._polish_batch import (
     require_float64,
 )
 from ._polish_engine import nb_mu_floor, polish_gene
+from ._settings import _match_arg
 from ._solver import nb_newton_solver
 
 __all__ = ["nb_mu_floor", "nb_profile_psi", "polish_nb"]
@@ -327,12 +328,9 @@ def polish_nb(
         with one row per gene: ``iterations``, ``psi_fitnb``, ``restarted``, ``capped``,
         ``singular``, ``psi_bound`` and ``polished``.
     """
-    if psi_method not in ("profile", "fixed"):
-        raise ValueError("'psi_method' should be one of 'profile', 'fixed'")
-    if engine not in ("batch", "gene"):
-        raise ValueError("'engine' should be one of 'batch', 'gene'")
-    if backend not in ("cpu", "auto", "gpu"):
-        raise ValueError("'backend' should be one of 'cpu', 'auto', 'gpu'")
+    psi_method = _match_arg(psi_method, ("profile", "fixed"), "psi_method")
+    engine = _match_arg(engine, ("batch", "gene"), "engine")
+    backend = _match_arg(backend, ("cpu", "auto", "gpu"), "backend")
     n_jobs = max(1, int(n_jobs))
     # short-circuits before check_gpu() probes, as R does
     gpu_active = backend in ("gpu", "auto") and check_gpu()

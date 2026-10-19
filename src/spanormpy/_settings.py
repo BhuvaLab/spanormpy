@@ -20,3 +20,12 @@ class Settings:
 
 
 settings = Settings()
+
+
+def _match_arg(value, choices, name: str) -> str:
+    """R ``match.arg`` for a single string (exact match only)."""
+    if not isinstance(value, str) or value not in choices:
+        raise ValueError(
+            f"'{name}' should be one of: " + ", ".join(f"'{c}'" for c in choices)
+        )
+    return value

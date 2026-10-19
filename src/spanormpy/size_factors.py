@@ -26,7 +26,7 @@ _EPS = np.finfo(float).eps
 # small numeric helpers
 # --------------------------------------------------------------------------------------
 def _col_sums(Y) -> np.ndarray:
-    return np.asarray(Y.sum(axis=0), dtype=float).ravel()
+    return np.asarray(Y.sum(axis=0, dtype=np.float64), dtype=float).ravel()
 
 
 def _dense_block(Y, rows=None, cols=None) -> np.ndarray:
@@ -263,7 +263,7 @@ def _solve_least_squares(A: sp.csr_matrix, b: np.ndarray) -> np.ndarray:
 
 def _per_cluster_normalize(x: np.ndarray, sizes, min_mean, positive, scaling=None):
     if scaling is None:
-        scaling = x.sum(axis=0)
+        scaling = x.sum(axis=0, dtype=np.float64)
     if np.any(scaling == 0):
         raise ValueError("cells should have non-zero library sizes or 'scaling' values")
     exprs = x / scaling

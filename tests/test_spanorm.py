@@ -1,4 +1,3 @@
-import importlib
 import warnings
 
 import anndata
@@ -8,12 +7,10 @@ import scipy.sparse as sp
 from tests._ref import load_ref
 
 import spanormpy._fitnb as fitnb_mod
+import spanormpy._spanorm as sn
 from spanormpy import spanorm
 from spanormpy._fit import load_fit
-from spanormpy.spanorm import match_df_tps, match_lambda
-
-# `spanormpy.spanorm` the function shadows the module attribute; fetch the module itself
-sn = importlib.import_module("spanormpy.spanorm")
+from spanormpy._spanorm import match_df_tps, match_lambda
 
 # Iterative fits given identical inputs and R's sampling: spec tolerance (rtol 1e-6).
 RTOL = 1e-6

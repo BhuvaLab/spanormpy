@@ -16,21 +16,13 @@ from ._adjust import get_adjustment_fun, get_gene_models, normalise_block_size, 
 from ._fit import SpaNormFit, _as_actual, fit_is_stale_for_spots, load_fit, store_fit
 from ._fitnb import _message, _quiet, fit_spanorm_nb
 from ._io import batch_design, get_coords, get_counts, resolve_input
+from ._settings import _match_arg
 from ._tps import bs_tps
 from .size_factors import quick_cluster, sum_factors
 
 _ADJ_METHODS = ("auto", "logpac", "pearson", "medbio", "meanbio")
 _BACKENDS = ("auto", "cpu", "gpu")
 _FIT_PASSTHROUGH = {"gpu_mem_budget", "winsor"}  # R `...` keys forwarded to fitSpaNormNB
-
-
-def _match_arg(value, choices, name: str) -> str:
-    """R ``match.arg`` for a single string (exact match only)."""
-    if not isinstance(value, str) or value not in choices:
-        raise ValueError(
-            f"'{name}' should be one of: " + ", ".join(f"'{c}'" for c in choices)
-        )
-    return value
 
 
 def _sample_random(coords: np.ndarray, nsub: int, rng: np.random.Generator) -> np.ndarray:

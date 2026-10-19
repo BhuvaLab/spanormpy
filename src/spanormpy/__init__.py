@@ -4,12 +4,12 @@ from . import pl
 from ._filter import filter_genes
 from ._fit import is_polished
 from ._fitnb import calculate_mu, fit_nb
+from ._polish_spanorm import polish_spanorm
 from ._settings import settings
+from ._spanorm import spanorm
 from .pca import spanorm_pca
 from .polish import nb_mu_floor, nb_profile_psi, polish_nb
-from .polish_spanorm import polish_spanorm
 from .size_factors import fast_size_factors
-from .spanorm import spanorm
 from .svg import spanorm_svg, top_svgs
 
 __version__ = "0.1.0.dev0"

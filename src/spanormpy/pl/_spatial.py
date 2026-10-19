@@ -116,7 +116,7 @@ def _draw(adata, values, label, *, title=None, img=False, crop=False, img_alpha=
             base = plt.get_cmap("tab10" if len(cats) <= 10 else "tab20")
             pal = [base(i % base.N) for i in range(len(cats))]
         lut = dict(zip(cats, pal))
-        c = [lut[v] if v == v else "lightgrey" for v in cat.astype(object)]
+        c = [lut[v] if not pd.isna(v) else "lightgrey" for v in cat.astype(object)]
         extra = {}
         legend = [Line2D([], [], marker="o", ls="", color=lut[k], label=str(k)) for k in cats]
     else:

@@ -14,6 +14,8 @@ import warnings
 import numpy as np
 import torch
 
+from ._settings import _match_arg
+
 DEFAULT_WINSOR = 4
 # Conservative estimate of how many (genes_block x cells) tensors are co-resident
 # on the device in one block-processing pass (see R's GPU_BLOCK_TENSOR_MULTIPLIER).
@@ -69,8 +71,7 @@ def resolve_device(backend: str = "auto") -> torch.device:
     ``"cpu"`` is always the CPU; ``"gpu"`` and ``"auto"`` use the accelerator
     when one is available and fall back to the CPU otherwise.
     """
-    if backend not in ("auto", "cpu", "gpu"):
-        raise ValueError("'backend' should be one of 'auto', 'cpu', 'gpu'")
+    backend = _match_arg(backend, ("auto", "cpu", "gpu"), "backend")
     if backend != "cpu" and check_gpu():
         return torch.device(get_backend_device())
     return torch.device("cpu")
@@ -159,8 +160,7 @@ def gene_block_count(
     Always 1 for ``backend="cpu"`` or when no accelerator is in use. ``n_cov``
     does not enter the formula (only genes x cells intermediates matter).
     """
-    if backend not in ("auto", "cpu", "gpu"):
-        raise ValueError("'backend' should be one of 'auto', 'cpu', 'gpu'")
+    backend = _match_arg(backend, ("auto", "cpu", "gpu"), "backend")
     if backend == "cpu" or not check_gpu():
         return 1
     if budget_bytes is None:

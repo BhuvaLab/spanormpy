@@ -10,6 +10,7 @@ from sklearn.metrics import adjusted_rand_score
 
 from _ref import load_ref
 from spanormpy.size_factors import (
+    _col_sums,
     _fast_size_factors,
     compute_size_factors,
     fast_size_factors,
@@ -18,6 +19,16 @@ from spanormpy.size_factors import (
 )
 
 REF = load_ref("sizefactors")
+
+
+def test_col_sums_float32_sparse_accumulates_in_float64():
+    # 1000 x (1e4 + 0.1): float32 accumulation gives 10000025, exact is 10000100
+    Y = sp.csc_matrix(np.full((1000, 3), 1e4 + 0.1, dtype=np.float32))
+    exp = float(np.float32(1e4 + 0.1)) * 1000
+    got = _col_sums(Y)
+    assert got.dtype == np.float64
+    np.testing.assert_allclose(got, exp, rtol=1e-12)
+    np.testing.assert_allclose(_col_sums(Y.toarray()), exp, rtol=1e-12)
 
 
 @pytest.fixture(scope="module")

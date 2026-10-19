@@ -733,7 +733,7 @@ def test_joint_with_no_polished_gene_warns_and_keeps_a1(ref):
 
 
 def _polish_fit(f0, Y, **kw):
-    from spanormpy.polish_spanorm import polish_spanorm_fit
+    from spanormpy._polish_spanorm import polish_spanorm_fit
 
     return polish_spanorm_fit(f0, Y, **kw)
 

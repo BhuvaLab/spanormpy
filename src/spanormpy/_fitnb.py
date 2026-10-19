@@ -35,6 +35,7 @@ from ._backend import (
 )
 from ._edger import estimate_disp_tagwise
 from ._nbdist import dnbinom
+from ._settings import _match_arg
 
 _MAD_CONSTANT = 1.4826
 
@@ -124,8 +125,7 @@ def _nblocks_for(ngenes, ncells, ncov, backend, gpu_mem_budget) -> int:
     The budget is evaluated lazily, as in R: it is never touched (nor validated)
     when ``backend == "cpu"`` or no accelerator is in use.
     """
-    if backend not in ("auto", "cpu", "gpu"):
-        raise ValueError("'backend' should be one of 'auto', 'cpu', 'gpu'")
+    backend = _match_arg(backend, ("auto", "cpu", "gpu"), "backend")
     if backend == "cpu" or not check_gpu():
         return 1
     return gene_block_count(
@@ -443,8 +443,7 @@ def fit_spanorm_nb(
     ``"dispersion"``) and ``loglik`` (outer-iteration trajectory; a scalar when
     ``psi`` is supplied).
     """
-    if backend not in ("auto", "cpu", "gpu"):
-        raise ValueError("'backend' should be one of 'auto', 'cpu', 'gpu'")
+    backend = _match_arg(backend, ("auto", "cpu", "gpu"), "backend")
     _check_int_positive(maxit_psi, "maxit_psi")
     if msgfun is None:
         msgfun = _message
@@ -607,8 +606,7 @@ def fit_nb(
     is zero). ``Y`` is genes x cells, ``W`` cells x covariates. Returns
     ``alpha``, ``gmean``, ``psi``, ``loglik``, ``sampling``.
     """
-    if backend not in ("auto", "cpu", "gpu"):
-        raise ValueError("'backend' should be one of 'auto', 'cpu', 'gpu'")
+    backend = _match_arg(backend, ("auto", "cpu", "gpu"), "backend")
     if idx is None:
         idx = np.ones(Y.shape[1], dtype=bool)
     return fit_spanorm_nb(
@@ -651,8 +649,7 @@ def calculate_mu(
     tensor on the accelerator otherwise (R's ``calculateMu``).
     """
     check_winsor(winsor)
-    if backend not in ("auto", "cpu", "gpu"):
-        raise ValueError("'backend' should be one of 'auto', 'cpu', 'gpu'")
+    backend = _match_arg(backend, ("auto", "cpu", "gpu"), "backend")
     dev = resolve_device(backend)
     alpha_t = as_tensor(alpha, dev)
     ng = alpha_t.shape[0]

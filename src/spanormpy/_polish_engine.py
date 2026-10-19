@@ -19,6 +19,7 @@ import torch
 from ._backend import as_tensor
 from ._block_design import _design_col_nonzero, _design_cross, _design_eta
 from ._nbdist import dnbinom
+from ._settings import _match_arg
 
 # The fitted mean is floored here and at inference, at the same value. A linear
 # predictor below about -745 underflows exp() to exactly 0 and the NB quantities
@@ -179,8 +180,7 @@ def polish_gene(
         ``iterations``, ``restarted``, ``capped``, ``singular``, ``psi_bound``,
         ``polished``.
     """
-    if psi_method not in ("profile", "fixed"):
-        raise ValueError("'psi_method' should be one of 'profile', 'fixed'")
+    psi_method = _match_arg(psi_method, ("profile", "fixed"), "psi_method")
     dev, dt = pen.device, pen.dtype
     y = as_tensor(y, dev, dt).reshape(-1)
     n = y.numel()

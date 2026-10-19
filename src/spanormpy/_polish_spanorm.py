@@ -35,7 +35,8 @@ from ._polish_model import (
     spanorm_polish_problem,
     unpenalised_rank_deficient,
 )
-from .spanorm import _ADJ_METHODS, _BACKENDS, _match_arg
+from ._settings import _match_arg
+from ._spanorm import _ADJ_METHODS, _BACKENDS
 
 _PSI_METHODS = ("fixed", "profile")
 _LS = ("fixed", "joint")

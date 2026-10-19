@@ -155,6 +155,13 @@ carries errors up to ~1e-14 that only the larger fuzz absorbs). This is needed f
 `nb_deviance_moments` to reproduce R's summation window to 1e-10. At `1 - p ~ 1e-13` R's own CDF is
 quantised at 1.1e-16 and its quantile can differ from the exact one by a few counts; not reproducible.
 
+## filter_genes returns None by default
+
+R's `filterGenes()` returns a logical vector and leaves the object alone. `filter_genes` follows the
+scanpy convention: the default `inplace=True` removes the genes failing the filter from `adata` and
+returns `None`. `filter_genes(adata, inplace=False)` leaves `adata` unchanged and returns R's boolean
+mask (genes with `rowMeans(counts > 0) >= prop`).
+
 ## polish_spanorm after a gene or spot subset
 
 `polishSpaNorm` calls `getSpaNormFit`, which in R errors when `fit$ngenes`/`fit$ncells` differ from
@@ -189,9 +196,7 @@ has to be fitted on a gene subset winsorises with the subset's own dispersions. 
 `random_state` argument (seed of the null's dispersion subsampling, R: the global RNG). The paired
 null reuses `polish_spanorm_fit`, with the full fit's recorded `psi_method`, `ls`, `cells`, `maxit`,
 `tol` and `psi_range`, on the CPU backend (R does not pass `backend` to the polish either).
-`top_svgs` does not run `checkSPE` (R validates the counts); it only needs the SVG columns. R's
-`topSVGs` keeps rows whose FDR is `NA` when filtering (`NA <= fdr` subsets to `NA` rows); `top_svgs`
-drops them.
+`top_svgs` follows R for `NA` FDRs and for the counts check; see "top_svgs and NaN FDRs" below.
 
 ## top_svgs and NaN FDRs
 

@@ -20,7 +20,7 @@ README ("Differences from R").
 | `diag_mat` | internal: `torch.diag_embed` | R wrapper not needed |
 | `dnbinom_gpu` | internal: `spanormpy._nbdist.dnbinom` |  |
 | `fastSizeFactors` | `spanormpy.fast_size_factors` | writes `obs["spanorm_size_factors"]` |
-| `filterGenes` | `spanormpy.filter_genes` | `inplace=False` returns R's logical vector |
+| `filterGenes` | `spanormpy.filter_genes` | deviation: the default `inplace=True` subsets the genes of `adata` and returns `None`; `inplace=False` returns R's logical vector (see `r-discrepancies.md`) |
 | `fitNB` | `spanormpy.fit_nb` |  |
 | `getBackendDevice` | internal: `spanormpy._backend.get_backend_device` |  |
 | `getBackendDtype` | internal: `spanormpy._backend.get_backend_dtype` |  |

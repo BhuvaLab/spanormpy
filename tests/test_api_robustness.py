@@ -7,7 +7,6 @@ full run (test_gene_subset_reuses_fit_with_global_psi_max), coordinate forms and
 (tests/test_io.py).
 """
 
-import importlib
 import warnings
 
 import anndata
@@ -17,10 +16,9 @@ import scipy.sparse as sp
 from tests._ref import REF_DIR, load_ref
 
 import spanormpy._fitnb as fitnb_mod
+import spanormpy._spanorm as sn
 from spanormpy import spanorm
 from spanormpy._fit import load_fit
-
-sn = importlib.import_module("spanormpy.spanorm")
 
 RTOL = 1e-6  # iterative fits given R's inputs and sampling
 FAST = dict(df_tps=2, sample_p=0.8, tol=1e-1, maxit_psi=3, maxit_nb=5, verbose=False)

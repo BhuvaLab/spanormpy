@@ -21,6 +21,7 @@ import numpy as np
 import torch
 
 from ._nbdist import qnbinom
+from ._settings import _match_arg
 
 _DOUBLE_XMIN = float(np.finfo(np.float64).tiny)
 _STIRLING_MIN = 100.0  # as _nbdist: Stirling form of the pmf for size >= 100
@@ -305,10 +306,8 @@ def ql_dispersion(
     CPU only); ``moments`` is ``"table"`` (shared interpolation table, both
     backends), ``"grid"`` (per-gene log-mu grid) or ``"cell"`` (every cell).
     """
-    if leverage not in ("trace", "exact"):
-        raise ValueError("'arg' should be one of 'trace', 'exact'")
-    if moments not in ("table", "grid", "cell"):
-        raise ValueError("'arg' should be one of 'table', 'grid', 'cell'")
+    leverage = _match_arg(leverage, ("trace", "exact"), "leverage")
+    moments = _match_arg(moments, ("table", "grid", "cell"), "moments")
     on_device = _is_tensor(y, mu)
     if p is None:
         if design is None:

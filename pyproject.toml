@@ -17,19 +17,21 @@ dependencies = [
     "pandas",
     "python-igraph>=0.11",
     "matplotlib>=3.8",
-    "h5py",
 ]
 
 [project.optional-dependencies]
 spatial = ["spatialdata>=0.2"]
-docs = ["sphinx", "myst-parser", "nbsphinx", "nbconvert", "ipykernel", "scanpy>=1.10"]
-dev = ["pytest", "threadpoolctl", "scikit-learn", "scanpy>=1.10", "ruff", "pre-commit"]
+docs = ["sphinx", "myst-parser", "nbsphinx", "nbconvert", "ipykernel", "scanpy>=1.10", "squidpy"]
+dev = ["pytest", "h5py", "threadpoolctl", "scikit-learn", "scanpy>=1.10", "ruff", "pre-commit"]
 
 [tool.hatch.version]
 path = "src/spanormpy/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/spanormpy"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["tests/ref/data", "tests/ref/Rlib", ".superpowers", "docs/superpowers"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

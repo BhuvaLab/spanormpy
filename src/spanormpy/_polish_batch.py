@@ -27,7 +27,7 @@ from ._block_design import (
 )
 from ._nbdist import dnbinom
 from ._polish_engine import MU_FLOOR
-from ._settings import settings
+from ._settings import _match_arg, settings
 from ._solver import _subset_state, nb_newton_solver_batch
 
 # Live gene x cell matrices inside one batched Newton iteration: the counts slice, mu,
@@ -245,8 +245,7 @@ def polish_batch(
         ``restarted``, ``capped``, ``singular``, ``psi_bound``, ``polished``, and
         ``factorisations`` (``{"pergene", "sync"}`` counts).
     """
-    if psi_method not in ("profile", "fixed"):
-        raise ValueError("'psi_method' should be one of 'profile', 'fixed'")
+    psi_method = _match_arg(psi_method, ("profile", "fixed"), "psi_method")
     Yb = as_tensor(Yb, _device_of(W, Yb), torch.float64)
     dev, dt = Yb.device, Yb.dtype
     B, ncell = Yb.shape

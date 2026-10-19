@@ -16,7 +16,7 @@ from ._fit import _as_actual, get_spanorm_fit
 from ._fitnb import calculate_mu
 from ._io import get_counts, resolve_input
 from ._nbdist import winsorise_psi
-from .spanorm import _match_arg
+from ._settings import _match_arg
 from .svg import top_svgs
 
 _RESIDUALS = ("deviance", "pearson")

@@ -158,6 +158,14 @@ def test_string_annotation_and_title(fitted):
         pl.plot_covariate(fitted, color=["g1"])
 
 
+def test_nullable_string_annotation_with_missing(fitted):
+    v = np.where(fitted.obsm["spatial"][:, 0] > 0, "u", "v").astype(object)
+    v[:3] = None
+    fitted.obs["s3"] = pd.array(v, dtype="string")
+    assert fitted.obs["s3"].isna().sum() == 3
+    assert n_points(pl.plot_spatial(fitted, "annotation", "s3")) == fitted.n_obs
+
+
 def test_circles_and_ax(fitted):
     fig, ax0 = plt.subplots()
     ax = pl.plot_spatial(fitted, "expression", "g1", circles=True, size=50, ax=ax0)

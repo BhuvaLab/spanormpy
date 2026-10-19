@@ -22,8 +22,9 @@ from ._fitnb import _message, _quiet, calculate_mu, fit_spanorm_nb
 from ._io import get_counts, resolve_input
 from ._nbdist import dnbinom, winsorise_psi
 from ._polish_model import polish_psi_range
-from .polish_spanorm import SVG_COLUMNS, _stored_unpolished, polish_spanorm_fit
-from .spanorm import _BACKENDS, _match_arg
+from ._polish_spanorm import SVG_COLUMNS, _stored_unpolished, polish_spanorm_fit
+from ._settings import _match_arg
+from ._spanorm import _BACKENDS
 
 _TABLE_COLUMNS = ("svg_F", "svg_p", "svg_fdr")
 _BLOCK_ELEMENTS = 4_000_000  # genes x spots per likelihood block (rowSums are per gene, so exact)

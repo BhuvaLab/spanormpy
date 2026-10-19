@@ -20,7 +20,7 @@ from tests.test_polish_spanorm import compare_fit, make_adata
 import spanormpy._fitnb as fitnb_mod
 from spanormpy import polish_spanorm, spanorm, spanorm_svg, top_svgs
 from spanormpy._fit import SpaNormFit, get_spanorm_fit, is_polished, load_fit, store_fit
-from spanormpy.polish_spanorm import SVG_COLUMNS
+from spanormpy._polish_spanorm import SVG_COLUMNS
 from spanormpy.svg import (
     _p_adjust_fdr,
     _polished_alike,
@@ -241,9 +241,8 @@ def test_batch_design_zero_batch_level_gene(ref, monkeypatch):
 
 
 def inject_default_sampling(monkeypatch, r):
-    import importlib
+    import spanormpy._spanorm as sn
 
-    sn = importlib.import_module("spanormpy.spanorm")
     s = np.asarray(r["input"]["sampling"]).astype(str)
     glm = np.flatnonzero(s != "all")
     psi_mask = s[glm] == "dispersion"
@@ -493,7 +492,7 @@ def test_penalises_library_size_terms_as_the_full_fit_does(monkeypatch):
     rng = np.random.default_rng(1712)
     Y = rng.poisson(10, size=(ng, nc)).astype(float)
     coords = rng.uniform(size=(nc, 2))
-    from spanormpy.spanorm import fit_spanorm
+    from spanormpy._spanorm import fit_spanorm
 
     seen = []
     orig = fitnb_mod.fit_nb_given_psi
