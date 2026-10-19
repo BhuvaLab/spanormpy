@@ -69,15 +69,22 @@ def _logpmf(x: torch.Tensor, mu: torch.Tensor, size: torch.Tensor) -> torch.Tens
 
     r_d = torch.where(big | inf_r | (r == 0), torch.ones_like(r), r)
     direct = (
-        torch.lgamma(x + r_d) - torch.lgamma(r_d) - lg_x1
+        torch.lgamma(x + r_d)
+        - torch.lgamma(r_d)
+        - lg_x1
         - r_d * torch.log1p(mu_s / r_d)
         + x * (log_mu - torch.log(r_d + mu_s))
     )
     r_b = torch.where(big, r, torch.full_like(r, _STIRLING_MIN))
     z = x + r_b
     stable = (
-        (z - 0.5) * torch.log1p(x / r_b) - x + _stirlerr(z) - _stirlerr(r_b) - lg_x1
-        - z * torch.log1p(mu_s / r_b) + x * log_mu
+        (z - 0.5) * torch.log1p(x / r_b)
+        - x
+        + _stirlerr(z)
+        - _stirlerr(r_b)
+        - lg_x1
+        - z * torch.log1p(mu_s / r_b)
+        + x * log_mu
     )
     pois = x * log_mu - mu_s - lg_x1
 
@@ -99,8 +106,12 @@ def _np_inputs(first, mu, size):
     """Broadcast float64 numpy views of the inputs plus the common dtype/device."""
     ft, mt, st = _prepare(first, mu, size)
     ft, mt, st = torch.broadcast_tensors(ft, mt, st)
-    return ft.detach().cpu().numpy().astype(float), mt.detach().cpu().numpy().astype(float), \
-        st.detach().cpu().numpy().astype(float), mt
+    return (
+        ft.detach().cpu().numpy().astype(float),
+        mt.detach().cpu().numpy().astype(float),
+        st.detach().cpu().numpy().astype(float),
+        mt,
+    )
 
 
 def _nb_params(mu, size):
@@ -131,7 +142,9 @@ def _cdf_sf_np(k, mu, size):
         sf = np.where(pois, sp.pdtrc(k, lam), sp.betainc(k + 1, n, qp))
     # scipy's betainc loses accuracy for large size (5e-11 relative at 1e6); there the
     # CDF is summed from the stable pmf instead (bounded number of terms).
-    ok_sum = (~point) & (~pois) & (size >= _BETAINC_MAX_SIZE) & np.isfinite(size) & (k <= _SUM_MAX_K)
+    ok_sum = (
+        (~point) & (~pois) & (size >= _BETAINC_MAX_SIZE) & np.isfinite(size) & (k <= _SUM_MAX_K)
+    )
     if ok_sum.any():
         idx = np.nonzero(ok_sum)
         kk = k[idx].astype(np.longdouble)
@@ -208,7 +221,9 @@ def _pnbinom_loop(q, mu, size, log=False):
         run = run + torch.exp(_logpmf(torch.full_like(mut, k), mut, st))
         res = torch.where(qf == k, run, res)
     res = torch.where(qf == math.inf, torch.ones_like(res), res)
-    res = torch.where(torch.isnan(qt) | torch.isnan(mut) | torch.isnan(st), torch.full_like(res, math.nan), res)
+    res = torch.where(
+        torch.isnan(qt) | torch.isnan(mut) | torch.isnan(st), torch.full_like(res, math.nan), res
+    )
     res = torch.clamp(res, max=1.0)
     return torch.log(res) if log else res
 
@@ -276,7 +291,8 @@ def winsorise_psi(psi, winsor: float = DEFAULT_WINSOR, psi_max: float | None = N
     if math.isinf(winsor):
         return psi
     if psi_max is None:
-        lp = np.log(psi)
-        med = np.median(lp)
-        psi_max = np.exp(med + winsor * 1.4826 * np.median(np.abs(lp - med)))
+        with np.errstate(all="ignore"):  # psi = 0 gives log = -Inf, silently as in R
+            lp = np.log(psi)
+            med = np.median(lp)
+            psi_max = np.exp(med + winsor * 1.4826 * np.median(np.abs(lp - med)))
     return np.minimum(psi, psi_max)

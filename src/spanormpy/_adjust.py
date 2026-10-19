@@ -16,7 +16,13 @@ import numpy as np
 import scipy.sparse as sp
 import torch
 
-from ._backend import DEFAULT_WINSOR, gene_block_indices, resolve_device
+from ._backend import (
+    DEFAULT_WINSOR,
+    as_tensor,
+    gene_block_indices,
+    get_backend_dtype,
+    resolve_device,
+)
 from ._fitnb import calculate_mu
 from ._nbdist import dnbinom, pnbinom, qnbinom, winsorise_psi
 
@@ -24,9 +30,7 @@ _GENE_MODELS = ("nb",)
 
 
 def _t(x, dev) -> torch.Tensor:
-    if isinstance(x, torch.Tensor):
-        return x.to(dev)
-    return torch.as_tensor(np.asarray(x), device=dev)
+    return as_tensor(x, dev, get_backend_dtype() if dev.type != "cpu" else torch.float64)
 
 
 def _out(x) -> np.ndarray:
@@ -134,12 +138,35 @@ def get_adjustment_fun(gene_model: str, adj_method: str) -> Callable:
         raise ValueError("invalid argument for 'adj.method'") from None
 
 
+def global_psi_max(psi) -> float:
+    """``exp(median(log psi) + winsor * MAD(log psi))`` over all genes (NaN if any psi is NaN)."""
+    psi = np.asarray(psi, dtype=float)
+    with np.errstate(all="ignore"):
+        lp = np.log(psi)
+        med = np.median(lp)
+        return float(np.exp(med + DEFAULT_WINSOR * 1.4826 * np.median(np.abs(lp - med))))
+
+
+def normalise_block_size(Y) -> float:
+    """Element budget per block for ``Y`` (R ``.normaliseBlockSize``).
+
+    Disk-backed or lazy input (h5py dataset, backed AnnData sparse dataset,
+    dask array) gives R's DelayedArray budget, ``max(1, 1e8 / 8)`` elements
+    (default auto block size of 100 MB in doubles); in-memory input gives ``inf``.
+    """
+    cls = type(Y)
+    root = cls.__module__.split(".")[0]
+    lazy = root in ("h5py", "dask", "zarr") or (
+        root == "anndata"
+        and cls.__name__ in ("CSRDataset", "CSCDataset", "BaseCompressedSparseDataset")
+    )
+    return max(1.0, 1e8 / 8) if lazy else math.inf
+
+
 def subset_fit_genes(fit, rows) -> SimpleNamespace:
     """Gene subset of a fit that keeps the global dispersion threshold (R ``subsetFitGenes``)."""
     psi = np.asarray(fit.psi, dtype=float)
-    lp = np.log(psi)
-    med = np.median(lp)
-    psi_max = np.exp(med + DEFAULT_WINSOR * 1.4826 * np.median(np.abs(lp - med)))
+    psi_max = global_psi_max(psi)
     return SimpleNamespace(
         gmean=np.asarray(fit.gmean)[rows],
         alpha=np.asarray(fit.alpha)[rows, :],
@@ -161,14 +188,13 @@ def normalise_blocked(
 ) -> np.ndarray:
     """Apply ``adj_fun`` over contiguous gene blocks and stack them (R ``normaliseBlocked``).
 
-    ``block_size`` is an element budget per block (``None`` = unlimited, like
-    R's ``Inf``); with ``n_jobs > 1`` and at least 1e6 elements, at least
+    ``block_size`` is an element budget per block (``None`` = :func:`normalise_block_size`); with ``n_jobs > 1`` and at least 1e6 elements, at least
     ``2 * n_jobs`` blocks are run on a thread pool.
     """
     ng, nc = Y.shape
     total = float(ng) * nc
     parallelise = n_jobs > 1 and total >= 1e6
-    bs = math.inf if block_size is None else block_size
+    bs = normalise_block_size(Y) if block_size is None else block_size
     nblocks = math.ceil(total / bs) if total > bs else 1
     if parallelise:
         nblocks = max(nblocks, 2 * n_jobs)

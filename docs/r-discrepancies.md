@@ -86,3 +86,12 @@ R evaluates `if (is.na(degener) | degener)` (NaN log-likelihood sums are treated
 but `step[check.gene] <- ...` with an `NA` in the per-cell logical index, and
 `ifelse((l1 - l2) / abs(l2) < tol, TRUE, FALSE)` with NaN inputs, error or give `NA` in R. Python treats NaN
 comparisons as False: such cells keep their step size, and a NaN convergence ratio counts as not converged.
+
+## normalise*: a single NaN dispersion turns logPAC, Pearson and medbio into all-NaN (R behaviour, reproduced)
+
+`winsorisePsi` caps dispersions at `exp(median(log psi) + 4 * mad(log psi))`. A NaN in `psi` makes the median and
+MAD NaN, so `psi.max` is NaN and `pmin(psi, psi.max)` is NaN for every gene: `normaliseLogPAC`,
+`normalisePearson` and `normaliseMedianBio` return NaN for the whole matrix, while `normaliseMeanBio` (which
+does not use `psi`) stays finite. A zero `psi` is harmless (`log(0) = -Inf` is absorbed by the median/MAD and
+the outputs stay finite), and R emits no warning. `winsorise_psi` and `normalise_*` reproduce this exactly
+(pinned by `test_degenerate_psi_matches_r`).

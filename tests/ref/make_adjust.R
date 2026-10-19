@@ -56,4 +56,13 @@ out$blocked <- list(
   pearson = unname(blk(ns("normalisePearson"), Y, 2.5, f1, block.size = 8e3)),
   nblocks = as.integer(ceiling(nrow(Y) * ncol(Y) / 8e3))
 )
+# degenerate dispersions on the same (no-batch) fit
+degen <- function(psi) {
+  f <- f1; f@psi <- psi
+  c(list(psi = psi), lapply(methods[c("logpac", "pearson", "medbio", "meanbio")], function(g) unname(g(Y, 2.5, f))))
+}
+psiA <- f1@psi; psiA[1] <- 0
+psiB <- f1@psi; psiB[1] <- 0; psiB[2] <- NaN; psiB[3] <- 1e-300; psiB[4] <- 1e6
+out$degen_zero <- degen(psiA)
+out$degen_mixed <- degen(psiB)
 write_ref(out, "adjust")

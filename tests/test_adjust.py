@@ -3,10 +3,13 @@
 import numpy as np
 import pytest
 import scipy.sparse as sp
+import torch
 from tests._ref import load_ref
 
+from spanormpy import _adjust
 from spanormpy._adjust import (
     get_adjustment_fun,
+    normalise_block_size,
     normalise_blocked,
     normalise_logpac,
     normalise_meanbatch,
@@ -133,3 +136,77 @@ def test_blocked_backed_h5py(ref, tmp_path):
         f["Y"] = ref["Y"]
         got = normalise_blocked(normalise_pearson, f["Y"], 1.0, fit, block_size=5000)
     np.testing.assert_allclose(got, normalise_pearson(ref["Y"], 1.0, fit), rtol=1e-12, atol=1e-12)
+
+
+def test_normalise_block_size(ref, tmp_path):
+    import h5py
+
+    Y = ref["Y"]
+    assert normalise_block_size(Y) == np.inf
+    assert normalise_block_size(sp.csr_matrix(Y)) == np.inf
+    with h5py.File(tmp_path / "y.h5", "w") as f:
+        f["Y"] = Y
+        assert normalise_block_size(f["Y"]) == 1e8 / 8  # DelayedArray auto block size, in doubles
+    pytest.importorskip("dask.array")
+    import dask.array as da
+
+    assert normalise_block_size(da.from_array(Y)) == 1e8 / 8
+
+
+class _SpyArray:
+    """Row-sliceable array that records every read; never hands out the whole matrix."""
+
+    def __init__(self, a):
+        self.a, self.shape, self.reads = a, a.shape, []
+
+    def __getitem__(self, key):
+        rows = key[0]
+        self.reads.append(rows.stop - rows.start)
+        return self.a[key]
+
+
+def test_default_block_size_reads_backed_input_in_blocks(ref, monkeypatch):
+    # the default budget comes from normalise_block_size; shrink it so the small fixture splits
+    fit = _fit(ref["nobatch"])
+    spy = _SpyArray(ref["Y"])
+    monkeypatch.setattr(_adjust, "normalise_block_size", lambda Y: 10_000.0)
+    got = normalise_blocked(normalise_pearson, spy, 1.0, fit)
+    assert len(spy.reads) > 1
+    assert max(spy.reads) < ref["Y"].shape[0]
+    assert sum(spy.reads) == ref["Y"].shape[0]
+    np.testing.assert_allclose(got, normalise_pearson(ref["Y"], 1.0, fit), rtol=1e-12, atol=1e-12)
+
+
+def test_in_memory_default_is_single_pass(ref, monkeypatch):
+    fit = _fit(ref["nobatch"])
+    calls = []
+    normalise_blocked(lambda *a: calls.append(1) or normalise_meanbio(*a), ref["Y"], 1.0, fit)
+    assert len(calls) == 1
+
+
+def test_tensor_dtype_follows_backend_dtype(monkeypatch):
+    # MPS has no float64: tensors on an accelerator must be built with the backend dtype
+    monkeypatch.setattr(_adjust, "get_backend_dtype", lambda: torch.float32)
+    t = _adjust._t(np.ones(3), torch.device("meta"))
+    assert t.dtype == torch.float32
+    assert _adjust._t(np.ones(3), torch.device("cpu")).dtype == torch.float64
+
+
+@pytest.mark.parametrize("case", ["degen_zero", "degen_mixed"])
+@pytest.mark.parametrize("method", ["logpac", "pearson", "medbio", "meanbio"])
+def test_degenerate_psi_matches_r(ref, case, method):
+    import warnings
+
+    fit = _fit(ref["nobatch"])
+    fit.psi = np.asarray(ref[case]["psi"])
+    want = ref[case][method]
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")  # psi = 0 must not warn (R is silent)
+        got = FUNS[method](ref["Y"], 2.5, fit)
+    np.testing.assert_allclose(got, want, rtol=RTOL, atol=ATOL, equal_nan=True)
+    np.testing.assert_array_equal(np.isnan(got), np.isnan(want))
+    # a single NaN dispersion makes psi.max NaN: every gene is NaN, except meanbio (psi-free)
+    all_nan = case == "degen_mixed" and method != "meanbio"
+    assert np.isnan(got).all() == all_nan
+    if not all_nan:
+        assert np.isfinite(got).all()
