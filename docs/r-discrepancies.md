@@ -201,3 +201,10 @@ artefact, but `top_svgs` reproduces the row count and order: genes with a NaN FD
 the sorted finite rows, in gene order, counted toward `n`, with all statistics NaN. Only the names
 differ: they keep their real gene names instead of R's `NA` junk names. `top_svgs` also takes `layer`
 and runs the counts check R's `checkSPE` does (it supersedes the earlier note that counts are not checked).
+
+## SpaNormPCA with NaN-FDR genes
+
+`topSVGs` returns all-NA rows named `NA`, `NA.1`, ... for genes whose FDR is `NaN` (see above), and R's
+`getResiduals(...)[svgs, ]` then fails with "subscript out of bounds". `spanorm_pca` raises a `ValueError`
+in the same situation (use a smaller `nsvgs` or set the FDRs). `percentVar`/`variance` cover only the
+`ncomponents` computed components (as in R), so `percent_var` sums to 100 over them, not over all components.
