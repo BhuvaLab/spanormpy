@@ -112,7 +112,11 @@ def _dnb(i: np.ndarray, size: np.ndarray, m: np.ndarray) -> np.ndarray:
     if sm.any():
         x, r, mm = i[sm], size[sm], m[sm]
         lp[sm] = (
-            gammaln(x + r) - gammaln(r) - lg_x1[sm] - r * np.log1p(mm / r) + x * (log_m[sm] - np.log(r + mm))
+            gammaln(x + r)
+            - gammaln(r)
+            - lg_x1[sm]
+            - r * np.log1p(mm / r)
+            + x * (log_m[sm] - np.log(r + mm))
         )
     if big.any():
         x, r, mm = i[big], size[big], m[big]
@@ -252,7 +256,7 @@ def _ql_interp(tab: dict, lmu, lphi) -> dict:
 
         def lerp(M):
             M = torch.as_tensor(M, dtype=lmu.dtype, device=lmu.device)
-            g = lambda jj, ii: M[jj.expand_as(ii), ii]  # noqa: E731
+            g = lambda jj, ii: M[jj.expand_as(ii), ii]
             return (1 - fpt) * ((1 - fx) * g(jt, i) + fx * g(jt, i + 1)) + fpt * (
                 (1 - fx) * g(j1, i) + fx * g(j1, i + 1)
             )

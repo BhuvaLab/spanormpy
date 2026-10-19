@@ -40,15 +40,12 @@ def _cmp(got, exp, n=None, **kw):
         _close(got[k], np.asarray(exp[k])[:n], **kw)
 
 
-
 # --- nb_unit_deviance --------------------------------------------------------
 def test_unit_deviance_vs_r(ref):
     u = ref["ud"]
     _close(nb_unit_deviance(u["y"], u["mu"], u["phi"]), u["dev"])
     _close(nb_unit_deviance(u["y"], u["mu"], 0.3), u["dev_scalar"])
-    edge = nb_unit_deviance(
-        np.array([[0, 0], [3, 2.0]]), np.array([[0, 1], [0, 1.5]]), [0.5, 2.0]
-    )
+    edge = nb_unit_deviance(np.array([[0, 0], [3, 2.0]]), np.array([[0, 1], [0, 1.5]]), [0.5, 2.0])
     _close(edge, u["edge"])
 
 
@@ -114,13 +111,26 @@ def test_moments_invalid_entries_and_caps(ref):
 
 # --- ql_moment_table and interpolation ---------------------------------------
 _TABS = {
-    "default": dict(lmu_range=np.log([1e-6, 1e3]), lphi_range=np.log([0.1, 10])),
-    "one_phi": dict(lmu_range=np.log([0.01, 50]), lphi_range=np.log([2.0, 2.0]), step_mu=0.3),
-    "steps": dict(
-        lmu_range=np.log([0.05, 20]), lphi_range=np.log([0.05, 8]), step_mu=0.5, step_phi=0.7
-    ),
-    "grid": dict(lmu_range=np.log([0.05, 20]), lphi_range=np.log([0.05, 8]), ngrid=17, nphi=5),
-    "degenerate": dict(lmu_range=np.log([2.0, 2.0]), lphi_range=np.log([1, 1.5]), ngrid=4, nphi=3),
+    "default": {"lmu_range": np.log([1e-6, 1e3]), "lphi_range": np.log([0.1, 10])},
+    "one_phi": {"lmu_range": np.log([0.01, 50]), "lphi_range": np.log([2.0, 2.0]), "step_mu": 0.3},
+    "steps": {
+        "lmu_range": np.log([0.05, 20]),
+        "lphi_range": np.log([0.05, 8]),
+        "step_mu": 0.5,
+        "step_phi": 0.7,
+    },
+    "grid": {
+        "lmu_range": np.log([0.05, 20]),
+        "lphi_range": np.log([0.05, 8]),
+        "ngrid": 17,
+        "nphi": 5,
+    },
+    "degenerate": {
+        "lmu_range": np.log([2.0, 2.0]),
+        "lphi_range": np.log([1, 1.5]),
+        "ngrid": 4,
+        "nphi": 3,
+    },
 }
 
 
@@ -151,7 +161,12 @@ def test_ql_dispersion_dlpfc_vs_r(ref, leverage, moments):
     q = ref["ql"]
     n = None
     got = ql_dispersion(
-        q["Y"][:n], q["mu"][:n], q["phi"][:n], design=q["design"], leverage=leverage, moments=moments
+        q["Y"][:n],
+        q["mu"][:n],
+        q["phi"][:n],
+        design=q["design"],
+        leverage=leverage,
+        moments=moments,
     )
     _cmp(got, q[f"{leverage}_{moments}"], n=n)
 
@@ -183,7 +198,9 @@ def test_ql_dispersion_options_vs_r(ref):
 def test_ql_dispersion_torch_dlpfc(ref):
     q = ref["ql"]
     cpu = ql_dispersion(q["Y"], q["mu"], q["phi"], p=q["design"].shape[1])
-    dev = ql_dispersion(torch.as_tensor(q["Y"]), torch.as_tensor(q["mu"]), q["phi"], p=q["design"].shape[1])
+    dev = ql_dispersion(
+        torch.as_tensor(q["Y"]), torch.as_tensor(q["mu"]), q["phi"], p=q["design"].shape[1]
+    )
     _cmp(dev, cpu, rtol=1e-8)
     _cmp(dev, q["trace_table"], rtol=1e-8)
 
@@ -264,7 +281,9 @@ def test_ql_caller_table_makes_result_invariant_to_gene_split(ref):
         _close(tab[k], exp[k])
     whole = ql_dispersion(y, mu, phi, p=3, table=tab)
     _cmp(whole, t["whole"])
-    parts = [ql_dispersion(y[i], mu[i], phi[i], p=3, table=tab) for i in (slice(0, 7), slice(7, 20))]
+    parts = [
+        ql_dispersion(y[i], mu[i], phi[i], p=3, table=tab) for i in (slice(0, 7), slice(7, 20))
+    ]
     np.testing.assert_array_equal(whole["s2"], np.concatenate([p["s2"] for p in parts]))
     np.testing.assert_array_equal(whole["df"], np.concatenate([p["df"] for p in parts]))
     ex = ql_dispersion(y, mu, phi, p=3, moments="cell")
