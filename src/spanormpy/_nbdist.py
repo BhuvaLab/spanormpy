@@ -296,11 +296,28 @@ def qnbinom(p, mu, size) -> torch.Tensor:
     return _qnbinom_loop(p, mu, size)
 
 
+def compute_psi_max(psi, winsor: float = DEFAULT_WINSOR) -> float:
+    """The dispersion cap ``exp(median(log psi) + winsor * MAD(log psi))`` (R's ``.psiMax``).
+
+    Taken over the finite log-dispersions only, so a NaN ``psi`` (or ``psi = 0``,
+    ``log = -Inf``) cannot poison the cap for every gene; with no finite value the cap is
+    ``inf`` (no winsorisation).
+    """
+    with np.errstate(all="ignore"):  # psi = 0 gives log = -Inf, silently as in R
+        lp = np.log(np.asarray(psi, dtype=float).ravel())
+    lp = lp[np.isfinite(lp)]
+    if lp.size == 0:
+        return math.inf
+    med = np.median(lp)
+    return float(np.exp(med + winsor * 1.4826 * np.median(np.abs(lp - med))))
+
+
 def winsorise_psi(psi, winsor: float = DEFAULT_WINSOR, psi_max: float | None = None) -> np.ndarray:
     """Cap dispersions at ``exp(median(log psi) + winsor * MAD(log psi))``.
 
     ``psi_max`` supplies a precomputed global threshold (R's ``psi.max``
     attribute, used when normalising in gene blocks); ``winsor=inf`` disables it.
+    The threshold uses finite log-dispersions only (see :func:`compute_psi_max`).
     """
     check_winsor(winsor)
     psi = np.asarray(psi, dtype=float)
@@ -308,7 +325,5 @@ def winsorise_psi(psi, winsor: float = DEFAULT_WINSOR, psi_max: float | None = N
         return psi
     if psi_max is None:
         with np.errstate(all="ignore"):  # psi = 0 gives log = -Inf, silently as in R
-            lp = np.log(psi)
-            med = np.median(lp)
-            psi_max = np.exp(med + winsor * 1.4826 * np.median(np.abs(lp - med)))
+            psi_max = compute_psi_max(psi, winsor)
     return np.minimum(psi, psi_max)

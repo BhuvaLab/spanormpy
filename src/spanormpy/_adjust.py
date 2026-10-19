@@ -24,7 +24,7 @@ from ._backend import (
     resolve_device,
 )
 from ._fitnb import calculate_mu
-from ._nbdist import dnbinom, pnbinom, qnbinom, winsorise_psi
+from ._nbdist import compute_psi_max, dnbinom, pnbinom, qnbinom, winsorise_psi
 
 _GENE_MODELS = ("nb",)
 
@@ -139,12 +139,9 @@ def get_adjustment_fun(gene_model: str, adj_method: str) -> Callable:
 
 
 def global_psi_max(psi) -> float:
-    """``exp(median(log psi) + winsor * MAD(log psi))`` over all genes (NaN if any psi is NaN)."""
-    psi = np.asarray(psi, dtype=float)
+    """The whole-fit dispersion cap (finite log-dispersions only; ``inf`` if none are finite)."""
     with np.errstate(all="ignore"):
-        lp = np.log(psi)
-        med = np.median(lp)
-        return float(np.exp(med + DEFAULT_WINSOR * 1.4826 * np.median(np.abs(lp - med))))
+        return compute_psi_max(psi, DEFAULT_WINSOR)
 
 
 def normalise_block_size(Y) -> float:

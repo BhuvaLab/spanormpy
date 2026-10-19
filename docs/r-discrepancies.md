@@ -87,14 +87,14 @@ but `step[check.gene] <- ...` with an `NA` in the per-cell logical index, and
 `ifelse((l1 - l2) / abs(l2) < tol, TRUE, FALSE)` with NaN inputs, error or give `NA` in R. Python treats NaN
 comparisons as False: such cells keep their step size, and a NaN convergence ratio counts as not converged.
 
-## normalise*: a single NaN dispersion turns logPAC, Pearson and medbio into all-NaN (R behaviour, reproduced)
+## normalise*: a single NaN dispersion (fixed in SpaNorm 1.7.16; spanormpy matches)
 
-`winsorisePsi` caps dispersions at `exp(median(log psi) + 4 * mad(log psi))`. A NaN in `psi` makes the median and
-MAD NaN, so `psi.max` is NaN and `pmin(psi, psi.max)` is NaN for every gene: `normaliseLogPAC`,
-`normalisePearson` and `normaliseMedianBio` return NaN for the whole matrix, while `normaliseMeanBio` (which
-does not use `psi`) stays finite. A zero `psi` is harmless (`log(0) = -Inf` is absorbed by the median/MAD and
-the outputs stay finite), and R emits no warning. `winsorise_psi` and `normalise_*` reproduce this exactly
-(pinned by `test_degenerate_psi_matches_r`).
+Up to SpaNorm 1.7.15 a NaN in `psi` made `psi.max = exp(median(log psi) + 4 * mad(log psi))` NaN and so every
+gene's logPAC, Pearson and medbio output NaN; a `psi` of 0 (`log = -Inf`) dragged the median to `-Inf`. SpaNorm
+1.7.16 computes the cap on the finite log-dispersions only (`Inf`, i.e. no winsorisation, if none are finite), so
+only the NaN gene is NaN and `psi = 0` genes are excluded from the median/MAD. `compute_psi_max` (used by
+`winsorise_psi` and `global_psi_max`) is the same rule; the source-of-truth R version for this behaviour is now
+1.7.16 (pinned by `test_degenerate_psi_matches_r`, with references regenerated from 1.7.16).
 
 ## Batch factor levels: locale collation
 

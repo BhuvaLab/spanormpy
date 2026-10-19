@@ -205,8 +205,25 @@ def test_degenerate_psi_matches_r(ref, case, method):
         got = FUNS[method](ref["Y"], 2.5, fit)
     np.testing.assert_allclose(got, want, rtol=RTOL, atol=ATOL, equal_nan=True)
     np.testing.assert_array_equal(np.isnan(got), np.isnan(want))
-    # a single NaN dispersion makes psi.max NaN: every gene is NaN, except meanbio (psi-free)
-    all_nan = case == "degen_mixed" and method != "meanbio"
-    assert np.isnan(got).all() == all_nan
-    if not all_nan:
-        assert np.isfinite(got).all()
+    # fixed in SpaNorm 1.7.16: the cap uses finite log-dispersions only, so a NaN psi
+    # (gene 2 in degen_mixed) is NaN for its own gene alone; psi-free meanbio is finite.
+    bad = np.zeros(got.shape[0], dtype=bool)
+    if case == "degen_mixed" and method != "meanbio":
+        bad[1] = True
+    assert np.isnan(got).all(axis=1).tolist() == bad.tolist()
+    assert np.isfinite(got[~bad]).all()
+
+
+def test_psi_max_finite_only():
+    from spanormpy._adjust import global_psi_max
+    from spanormpy._nbdist import compute_psi_max, winsorise_psi
+
+    psi = np.array([0.1, 0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 100.0])
+    lp = np.log(psi)
+    ref = np.exp(np.median(lp) + 4 * 1.4826 * np.median(np.abs(lp - np.median(lp))))
+    assert compute_psi_max(psi) == pytest.approx(ref)
+    assert global_psi_max(np.r_[psi, np.nan, 0.0, np.inf]) == pytest.approx(ref)
+    assert compute_psi_max(np.array([np.nan, 0.0])) == np.inf
+    assert compute_psi_max(np.array([])) == np.inf
+    w = winsorise_psi(np.r_[psi, np.nan])
+    assert np.isnan(w[-1]) and np.allclose(w[:-1], np.minimum(psi, ref))
