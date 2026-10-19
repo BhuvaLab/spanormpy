@@ -22,7 +22,7 @@ dependencies = [
 
 [project.optional-dependencies]
 spatial = ["spatialdata>=0.2"]
-dev = ["pytest", "scanpy>=1.10", "ruff", "pre-commit"]
+dev = ["pytest", "scikit-learn", "scanpy>=1.10", "ruff", "pre-commit"]
 
 [tool.hatch.version]
 path = "src/spanormpy/__init__.py"

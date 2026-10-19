@@ -57,3 +57,18 @@ that (0.0 for a leading row, otherwise the previous Newton-fitted row's coeffici
 undefined behaviour in edgeR, matched empirically on the R-vs-Python fuzz (all non-converging
 scenarios reproduce); it affects very sparse, strongly overdispersed genes at large grid
 dispersions.
+
+## quickCluster: deterministic substitutes for irlba and the KMKNN search
+
+`quick_cluster` follows `scran::quickCluster(Y)` step for step, but the centred SVD uses an exact
+thin SVD (`numpy.linalg.svd`; `scipy.sparse.linalg.svds` only above 1000 retained genes) instead of
+`irlba`, and the SNN graph uses an exact `cKDTree` search. Principal components agree up to sign
+and `irlba` tolerance; exact distance ties in the neighbour search may be broken differently.
+Clusters are compared to R by adjusted Rand index (>= 0.9, 1.0 on the test data), not exactly.
+
+## cleanSizeFactors: nls stopping point
+
+`scuttle::cleanSizeFactors` (the `positive = TRUE` repair of non-positive pooled estimates) fits a
+nonlinear trend with `nls`, which stops at a 1e-5 relative-offset criterion. The Python Gauss-Newton
+uses LAPACK QR where R uses LINPACK `dqrdc2`, so the replaced entries agree to ~1e-9 relative
+rather than 1e-10; all other size factors agree to 1e-10.
