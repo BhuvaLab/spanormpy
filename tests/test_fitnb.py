@@ -465,3 +465,180 @@ def test_fit_nb_recovers_generic_glm():
     assert np.all(fit["gmean"] == 0)
     assert fit["alpha"].shape == (ng, 3)
     assert np.corrcoef(fit["alpha"].ravel(), a.ravel())[0, 1] > 0.9
+
+
+# ---- convergence / step-halving references ----------------------------------
+def _numfmt(m):
+    return re.sub(r"-?\d+\.\d+", "#", m)
+
+
+def _nums(m):
+    return [float(x) for x in re.findall(r"-?\d+\.\d+", m)]
+
+
+def _assert_msgs(got, exp):
+    exp = [str(m) for m in np.atleast_1d(exp)]
+    assert [_numfmt(m) for m in got] == [_numfmt(m) for m in exp]
+    for g, e in zip(got, exp, strict=True):
+        np.testing.assert_allclose(_nums(g), _nums(e), rtol=1e-6)
+
+
+def test_converged_generic_matches_r(ref, device):
+    exp = ref["conv_generic"]
+    msgs = []
+    got = fit_spanorm_nb(
+        exp["Y"],
+        exp["W"],
+        np.ones(exp["Y"].shape[1], bool),
+        is_spanorm=False,
+        lambda_a=0.0,
+        backend=_backend(device),
+        msgfun=msgs.append,
+    )
+    _check_fit(got, exp)
+    _assert_msgs(msgs, exp["msgs"])
+    assert any(m.endswith("(converged)") for m in msgs)
+
+
+def test_converged_spanorm_matches_r(ref, device):
+    exp = ref["conv_spanorm"]
+    msgs = []
+    got = fit_spanorm_nb(
+        exp["Y"],
+        exp["W"],
+        np.ones(exp["Y"].shape[1], bool),
+        is_spanorm=True,
+        lambda_a=exp["lambda_a"],
+        backend=_backend(device),
+        msgfun=msgs.append,
+    )
+    _check_fit(got, exp)
+    _assert_msgs(msgs, exp["msgs"])
+    assert msgs[-1].endswith("(converged)")
+    assert any("(did not converged)" in m for m in msgs)  # first inner fit hits maxit_nb
+
+
+@pytest.mark.parametrize("sd", [1, 2])
+@pytest.mark.parametrize("sp", [0, 1])
+def test_step_halving_matches_r(ref, device, sd, sp):
+    exp = ref[f"halv_s{sd}_sp{sp}"]
+    c = ref["conv_generic"]
+    msgs = []
+    got = fit_nb_given_psi(
+        c["Y"],
+        c["W"],
+        ref["halv_psi"],
+        lambda_a=[0.1, 0.1] if sp else 0.1,
+        gmean=np.zeros(c["Y"].shape[0]),
+        alpha=exp["A0"],
+        is_spanorm=bool(sp),
+        winsor=np.inf,
+        backend=_backend(device),
+        msgfun=msgs.append,
+    )
+    np.testing.assert_allclose(got["alpha"], exp["alpha"], rtol=RTOL, atol=ATOL)
+    np.testing.assert_allclose(got["gmean"], exp["gmean"], rtol=RTOL, atol=ATOL)
+    np.testing.assert_allclose(got["loglik"], exp["loglik"], rtol=RTOL)
+    np.testing.assert_allclose(got["loglik_iter"], np.atleast_1d(exp["loglik_iter"]), rtol=RTOL)
+    _assert_msgs(msgs, exp["msgs"])
+
+
+def test_blocked_offs_psi_with_offset(ref):
+    import torch
+
+    idx = ref["idx"].astype(bool)
+    alpha = torch.as_tensor(ref["offset"]["alpha"])
+    Wp = torch.as_tensor(ref["Wg"][idx][:200])
+    off = ref["O"][:, idx][:, :200]
+    exp = ref["offset"]["alpha"] @ ref["Wg"][idx][:200].T + off
+    blocks = gene_block_indices(alpha.shape[0], 3)
+    assert len(blocks) == 3
+    got = _fitnb._blocked_offs_psi(alpha, Wp, blocks, off)
+    np.testing.assert_allclose(got, exp, rtol=1e-12, atol=1e-14)
+
+
+def test_budget_forced_blocks_equal_single_block(ref, monkeypatch):
+    """Force the budget-driven route (as on an accelerator) on the CPU device."""
+    import spanormpy._backend as be
+
+    idx = ref["idx"].astype(bool)
+    kw = {
+        "maxit_psi": 2,
+        "maxit_nb": 5,
+        "lambda_a": 0.5,
+        "offset": ref["O"],
+        "backend": "gpu",
+        "msgfun": lambda m: None,
+    }
+    single = fit_spanorm_nb(ref["Y"], ref["Wg"], idx, rng=np.random.default_rng(1), **kw)
+
+    seen = []
+    real = be.gene_block_count
+
+    def counting(*a, **k):
+        n = real(*a, **k)
+        seen.append(n)
+        return n
+
+    monkeypatch.setattr(_fitnb, "check_gpu", lambda: True)
+    monkeypatch.setattr(_fitnb, "get_gpu_memory_budget", lambda b=None: 1000.0)
+    monkeypatch.setattr(be, "check_gpu", lambda: True)
+    monkeypatch.setattr(be, "gpu_dtype_bytes", lambda: 8)
+    monkeypatch.setattr(_fitnb, "gene_block_count", counting)
+    blocked = fit_spanorm_nb(ref["Y"], ref["Wg"], idx, rng=np.random.default_rng(1), **kw)
+    assert (
+        seen
+        and max(seen) == ref["Y"].shape[0]
+        and len(gene_block_indices(ref["Y"].shape[0], max(seen))) > 1
+    )
+    # Blocked and unblocked offsets for edgeR differ by ~1e-16 (matmul summation order); edgeR's
+    # dispersion optimiser is flat near the optimum and amplifies that to ~4e-9 relative in psi
+    # for low-dispersion genes, so the outer-loop quantities are compared at 1e-7, not 1e-10.
+    for k in ("alpha", "gmean", "psi"):
+        np.testing.assert_allclose(blocked[k], single[k], rtol=1e-7, atol=1e-10)
+    np.testing.assert_allclose(blocked["loglik"], single["loglik"], rtol=1e-9)
+
+
+def test_tol_reaches_only_outer_loop(ref):
+    c = ref["conv_generic"]
+    idx = np.ones(c["Y"].shape[1], bool)
+    out = {}
+    for tol in (1e-4, 1e9):
+        msgs = []
+        fit_spanorm_nb(
+            c["Y"],
+            c["W"],
+            idx,
+            lambda_a=0.0,
+            tol=tol,
+            maxit_psi=25,
+            rng=np.random.default_rng(7),
+            backend="cpu",
+            msgfun=msgs.append,
+        )
+        out[tol] = msgs
+    outer = lambda ms: [m for m in ms if "estimating gene-wise" in m]
+    assert len(outer(out[1e9])) == 2
+    assert len(outer(out[1e-4])) > 2
+    # inner loop is unaffected: its first inner fit is identical under both tol values
+    first = lambda ms: [m for m in ms if m.startswith("iter:  1, iter:")]
+    assert first(out[1e9]) == first(out[1e-4])
+
+
+def test_edger_any_error_is_caught(ref, monkeypatch, inject_psi_idx):
+    def boom(*a, **k):
+        raise RuntimeError("anything")
+
+    monkeypatch.setattr(_fitnb, "estimate_disp_tagwise", boom)
+    got = fit_spanorm_nb(
+        ref["Y"],
+        ref["W"],
+        ref["idx"].astype(bool),
+        maxit_psi=1,
+        maxit_nb=2,
+        is_spanorm=True,
+        lambda_a=ref["lambda_a"],
+        backend="cpu",
+        msgfun=lambda m: None,
+    )
+    np.testing.assert_array_equal(got["psi"], 0.0)

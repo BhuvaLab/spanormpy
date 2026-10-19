@@ -102,4 +102,39 @@ if (!inherits(E_res, "error")) {
   out$edger_fail_msg <- conditionMessage(E_res)
 }
 
+# --- F: runs to full convergence (default maxit.nb / maxit.psi) --------------
+collect <- function() { m <- character(); list(f = function(...) m <<- c(m, paste0(...)), get = function() m) }
+# (a) small generic fit, 10 genes x 300 cells
+set.seed(5); gng <- 10; gnc <- 300
+Wc <- cbind(1, rnorm(gnc), rnorm(gnc)); Ac <- cbind(rnorm(gng, 1.5, .3), rnorm(gng, 0, .5), rnorm(gng, 0, .5))
+Yc <- matrix(rnbinom(gng * gnc, mu = exp(Ac %*% t(Wc)), size = 5), gng, gnc)
+mc <- collect(); set.seed(7)
+fc <- fitSpaNormNB(Yc, Wc, rep(TRUE, gnc), is.spanorm = FALSE, lambda.a = 0, backend = "cpu", msgfun = mc$f)
+out$conv_generic <- c(list(Y = Yc, W = Wc, msgs = mc$get()), pack(fc))
+# (b) SpaNorm model on a 15 gene x 400 cell dlpfc subset (df.tps = 2)
+set.seed(3); cells <- sort(sample(ncol(Yfull), 400))
+Y4 <- Yfull[1:15, cells]; n4 <- 400
+c4 <- apply(xy[cells, ], 2, \(x) (x - min(x)) / (max(x) - min(x)) - 0.5)
+b4 <- bs.tps(c4[, 1], c4[, 2], df.tps = 2); l4 <- bs.tps(c4[, 1], c4[, 2], df.tps = 1)
+lls <- log(pmax(1e-08, colSums(Y4)))
+W4 <- model.matrix(~ lls + b4 + lls:l4)[, -1]; dimnames(W4) <- NULL
+d4 <- c(as.integer(attr(b4, "df.tps")), as.integer(attr(l4, "df.tps")))
+lam4 <- rep(0, ncol(W4)); lam4[seq(2, prod(d4[1:2]) + 1)] <- 1e-4; lam4 <- lam4[-1] * n4
+m4 <- collect(); set.seed(9)
+f4 <- fitSpaNormNB(Y4, W4, rep(TRUE, n4), is.spanorm = TRUE, lambda.a = lam4, backend = "cpu", msgfun = m4$f)
+out$conv_spanorm <- c(list(Y = Y4, W = W4, lambda_a = lam4, msgs = m4$get()), pack(f4))
+# (c) step halving: fitNBGivenPsi from overshooting starts (psi fixed, winsor = Inf)
+out$halv_psi <- rep(0.2, gng)
+for (sd in 1:2) {
+  set.seed(sd); A0 <- matrix(rnorm(gng * 3, 0, 0.3), gng, 3)
+  for (sp in c(FALSE, TRUE)) {
+    mh <- collect()
+    fh <- fitNBGivenPsi(Yc, Wc, out$halv_psi, lambda.a = if (sp) rep(0.1, 2) else 0.1,
+                        gmean = rep(0, gng), alpha = A0, is.spanorm = sp, winsor = Inf,
+                        backend = "cpu", msgfun = mh$f)
+    out[[sprintf("halv_s%d_sp%d", sd, sp)]] <- list(A0 = A0, alpha = fh$alpha, gmean = fh$gmean,
+      loglik = fh$loglik, loglik_iter = fh$loglik.iter, msgs = mh$get())
+  }
+}
+
 write_ref(out, "fitnb")

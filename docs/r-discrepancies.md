@@ -72,3 +72,17 @@ Clusters are compared to R by adjusted Rand index (>= 0.9, 1.0 on the test data)
 nonlinear trend with `nls`, which stops at a 1e-5 relative-offset criterion. The Python Gauss-Newton
 uses LAPACK QR where R uses LINPACK `dqrdc2`, so the replaced entries agree to ~1e-9 relative
 rather than 1e-10; all other size factors agree to 1e-10.
+
+## fitNB / fitSpaNormNB: `tol` reaches only the outer loop
+
+`fitSpaNormNB(..., tol = )` has `tol` as a formal argument, so it is not part of the `...` forwarded to
+`fitNBGivenPsi`; the inner IRLS loop therefore always uses its default `tol = 1e-4` and `fitNB(tol = )`
+only changes the outer dispersion loop. Matched in `fit_spanorm_nb` (pinned by
+`test_tol_reaches_only_outer_loop`).
+
+## fitNBGivenPsi / fitSpaNormNB: NaN in step-halving and convergence comparisons
+
+R evaluates `if (is.na(degener) | degener)` (NaN log-likelihood sums are treated as degenerate, matched),
+but `step[check.gene] <- ...` with an `NA` in the per-cell logical index, and
+`ifelse((l1 - l2) / abs(l2) < tol, TRUE, FALSE)` with NaN inputs, error or give `NA` in R. Python treats NaN
+comparisons as False: such cells keep their step size, and a NaN convergence ratio counts as not converged.

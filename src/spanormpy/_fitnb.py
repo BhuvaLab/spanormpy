@@ -33,7 +33,7 @@ from ._backend import (
     resolve_device,
     winsorise_cols,
 )
-from ._edger import EdgeRError, estimate_disp_tagwise
+from ._edger import estimate_disp_tagwise
 from ._nbdist import dnbinom
 
 _MAD_CONSTANT = 1.4826
@@ -536,7 +536,7 @@ def fit_spanorm_nb(
             psi_tmp = np.asarray(
                 estimate_disp_tagwise(Ysub_psi, offs_psi, robust=True), dtype=float
             )
-        except EdgeRError:
+        except Exception:  # noqa: BLE001 - R: tryCatch(error = ) catches any error
             psi_tmp = np.full(ngenes, np.nan)
         valid = ~np.isnan(psi_tmp) & ~np.isinf(psi_tmp)
         psi[valid] = psi_tmp[valid]
