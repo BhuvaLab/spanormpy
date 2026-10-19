@@ -14,10 +14,10 @@ README ("Differences from R").
 | `SpaNorm` | `spanormpy.spanorm` | in place on AnnData (`copy=True` to return a copy); output in `layers["logcounts"]` |
 | `SpaNormPCA` | `spanormpy.spanorm_pca` | result in `obsm["X_spanorm_pca"]` |
 | `SpaNormSVG` | `spanormpy.spanorm_svg` | statistics in `var["svg_F"]`, `var["svg_p"]`, `var["svg_fdr"]` |
-| `add_vec_mat_gpu` | internal: `torch` (broadcast addition) | R wrapper not needed; torch tensors are used directly |
+| `add_vec_mat_gpu` | internal: `torch.add` (broadcasting) | R wrapper not needed; torch tensors are used directly |
 | `calculateMu` | `spanormpy.calculate_mu` |  |
 | `checkGPU` | internal: `spanormpy._backend.check_gpu` |  |
-| `diag_mat` | internal: `torch` (`torch.diag_embed`) | R wrapper not needed |
+| `diag_mat` | internal: `torch.diag_embed` | R wrapper not needed |
 | `dnbinom_gpu` | internal: `spanormpy._nbdist.dnbinom` |  |
 | `fastSizeFactors` | `spanormpy.fast_size_factors` | writes `obs["spanorm_size_factors"]` |
 | `filterGenes` | `spanormpy.filter_genes` | `inplace=False` returns R's logical vector |
@@ -27,12 +27,12 @@ README ("Differences from R").
 | `getGPUMemoryBudget` | internal: `spanormpy._backend.get_gpu_memory_budget` |  |
 | `gpuDtypeBytes` | internal: `spanormpy._backend.gpu_dtype_bytes` |  |
 | `hasBadValues` | internal: `spanormpy._backend.has_bad_values` |  |
-| `invert_mat` | internal: `torch` (`torch.linalg.inv`) | R wrapper not needed |
-| `invert_mat_batched` | internal: `torch` (`torch.linalg.inv`, batched) | R wrapper not needed |
+| `invert_mat` | internal: `torch.linalg.inv` | R wrapper not needed |
+| `invert_mat_batched` | internal: `torch.linalg.inv` (batched) | R wrapper not needed |
 | `isPolished` | `spanormpy.is_polished` | takes a stored `SpaNormFit` |
-| `is_torch_tensor` | internal: `torch` (`isinstance(x, torch.Tensor)`) | R wrapper not needed |
-| `matmul_gpu` | internal: `torch` (`torch.matmul`) | R wrapper not needed |
-| `mult_vec_mat_gpu` | internal: `torch` (broadcast multiplication) | R wrapper not needed |
+| `is_torch_tensor` | internal: `torch.is_tensor` | R wrapper not needed |
+| `matmul_gpu` | internal: `torch.matmul` | R wrapper not needed |
+| `mult_vec_mat_gpu` | internal: `torch.mul` (broadcasting) | R wrapper not needed |
 | `nbAbsorbGramBatch` | internal: `spanormpy._solver.nb_absorb_gram_batch` |  |
 | `nbBlockDesign` | internal: `spanormpy._block_design.nb_block_design` | S3 methods (`as.matrix`, `dim`, `dimnames`, `print`) are methods of `NBBlockDesign` |
 | `nbDevianceMoments` | internal: `spanormpy._quasilik.nb_deviance_moments` |  |
@@ -49,12 +49,12 @@ README ("Differences from R").
 | `qlDispersion` | internal: `spanormpy._quasilik.ql_dispersion` |  |
 | `qlMomentTable` | internal: `spanormpy._quasilik.ql_moment_table` |  |
 | `resetGPUCache` | internal: `spanormpy._backend.reset_gpu_cache` |  |
-| `rowSums_gpu` | internal: `torch` (`Tensor.sum(dim=1)`) | R wrapper not needed |
+| `rowSums_gpu` | internal: `torch.sum` (`dim=1`) | R wrapper not needed |
 | `setGPUMemoryBudget` | internal: `spanormpy._backend.set_gpu_memory_budget` | also `spanormpy.settings` for the polish memory budget |
-| `tcrossprod_gpu` | internal: `torch` (`A @ B.T`) | R wrapper not needed |
+| `tcrossprod_gpu` | internal: `torch.matmul` (`A @ B.T`) | R wrapper not needed |
 | `toGPUMatrix` | internal: `spanormpy._backend.as_tensor` |  |
 | `toGPUVector` | internal: `spanormpy._backend.as_tensor` |  |
-| `toRMatrix` | internal: `torch` (`Tensor.cpu().numpy()`) | R wrapper not needed |
+| `toRMatrix` | internal: `torch.Tensor.numpy` | R wrapper not needed |
 | `topSVGs` | `spanormpy.top_svgs` | returns a `DataFrame` |
 | `tpsBasis` | internal: `spanormpy._tps.tps_basis` |  |
 | `SpaNormFit` | internal: `spanormpy._fit.SpaNormFit` | exported class; stored in AnnData `var`/`varm`/`obsm`/`uns["spanorm"]`, the `$` method is attribute access |

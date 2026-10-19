@@ -44,23 +44,28 @@ sn.polish_spanorm(adata)                   # optional: converge every gene separ
 
 The fit is stored in the object (`var`, `varm`, `obsm`, and scalars in `uns["spanorm"]`), so
 re-running with another `adj_method` only redoes the adjustment. A full walk-through is in
-[docs/tutorial.ipynb](docs/tutorial.ipynb) (port of the R vignette). Every R export and its Python
+[docs/tutorial.ipynb](docs/tutorial.ipynb) (a squidpy mouse-brain Visium walk-through of the R vignette; the HumanDLPFC version identical to the R vignette is on the website). Every R export and its Python
 name are listed in [docs/r-to-python.md](docs/r-to-python.md).
 
 ## Differences from R
 
-The full list is in [docs/r-discrepancies.md](docs/r-discrepancies.md). The intentional ones:
+The full list, with reasons, is in [docs/r-discrepancies.md](docs/r-discrepancies.md). The intentional ones:
 
-- **Gene-subset reuse of stored fits.** After `adata[:, genes]`, `spanorm`, `spanorm_svg` and
-  `polish_spanorm` reuse the matching part of the stored fit exactly as R does after `subsetFitGenes`;
-  functions given a view convert it to an actual object without warning.
-- **Explicit `size_factors` argument.** Pass size factors directly; `obs["size_factors"]` is never read
-  implicitly.
-- **Default size factors** are computed by the built-in scran-like method (clustered sum factors) and
-  written to `obs["spanorm_size_factors"]`.
-- **`logcounts` follows the input.** `layers["logcounts"]` is dense for dense counts and sparse for
-  sparse counts.
-- **`n_jobs` replaces `BPPARAM`**, and `random_state` replaces `set.seed`.
+- **Gene subsets reuse the stored fit (a deviation).** R refits when the object is subset by genes
+  (`fit$ngenes != nrow`). After `adata[:, genes]`, `spanorm` instead reuses the matching slice of the stored
+  fit (as R's `subsetFitGenes` would), which equals R's adjustment of the full fit on those genes;
+  `overwrite=True` reproduces R's refit. A spot subset refits, as in R. `polish_spanorm` and `spanorm_svg`
+  have their own subset rules (see the discrepancies page). Views are converted to real objects without a warning.
+- **Explicit `size_factors` argument.** Pass size factors directly; `obs["size_factors"]` is never read implicitly.
+- **Default pipeline matches R only approximately.** Default size factors come from a built-in scran-like
+  method (own `quick_cluster`) written to `obs["spanorm_size_factors"]`, and spot sampling uses a numpy RNG
+  (`random_state` replaces `set.seed`). Results agree with R to numerical closeness; exact parity is obtained
+  when R's size factors and sampling are supplied.
+- **Adjustment honours `backend`.** R's adjustment step uses any available accelerator regardless of the
+  requested backend; here `backend="cpu"` keeps everything on the CPU.
+- **`logcounts` follows the input.** `layers["logcounts"]` is dense for dense counts and sparse for sparse counts
+  (R always stores sparse).
+- **`n_jobs` replaces `BPPARAM`.**
 
 ## Download statistics
 

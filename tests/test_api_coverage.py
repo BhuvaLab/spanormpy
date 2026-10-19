@@ -31,8 +31,17 @@ def _rows() -> dict[str, str]:
 
 
 def _resolve(dotted: str):
-    mod, _, attr = dotted.rpartition(".")
-    return getattr(importlib.import_module(mod), attr)
+    """Import the longest module prefix, then getattr the rest (e.g. ``torch.Tensor.numpy``)."""
+    parts = dotted.split(".")
+    for i in range(len(parts) - 1, 0, -1):
+        try:
+            obj = importlib.import_module(".".join(parts[:i]))
+        except ModuleNotFoundError:
+            continue
+        for attr in parts[i:]:
+            obj = getattr(obj, attr)
+        return obj
+    raise ImportError(dotted)
 
 
 @pytest.mark.skipif(not R_REPO.exists(), reason="../SpaNorm not available")
@@ -48,13 +57,10 @@ def test_python_names_in_mapping_resolve():
     for r_name, cell in rows.items():
         refs = re.findall(r"`([A-Za-z_][\w.]*)`", cell)
         assert refs, f"{r_name}: no Python name given"
-        if cell.startswith("internal:"):
-            for ref in refs:
-                if ref.startswith("spanormpy."):
-                    importlib.import_module(ref.rsplit(".", 1)[0])
-                    if not ref.endswith("."):
-                        assert _resolve(ref) is not None, f"{r_name}: {ref}"
-        else:
-            for ref in refs:
-                assert ref.startswith(("spanormpy.", "spanormpy.pl.")), (r_name, ref)
+        # `torch.*` and `spanormpy.*` names are resolved; `spanormpy._x.y` rows are internal
+        # (leading underscore modules), public rows must live directly in spanormpy or spanormpy.pl
+        if not cell.startswith("internal:"):
+            assert all(re.fullmatch(r"spanormpy(\.pl)?\.\w+", ref) for ref in refs), (r_name, refs)
+        for ref in refs:
+            if ref.startswith(("spanormpy.", "torch.")):
                 assert _resolve(ref) is not None, f"{r_name}: {ref} not importable"
