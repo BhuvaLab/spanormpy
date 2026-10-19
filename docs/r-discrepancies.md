@@ -144,3 +144,13 @@ logcounts, size factor floored at 1e-8) and identically here. Without supplied s
 `spanorm`. A batch factor with an unused level gives an all-zero unregularised column and a
 singular system in both (R: `dgesv ... exactly singular`; here torch's `LinAlgError`, a different
 exception type).
+
+## qnbinom in the far upper tail (CPU)
+
+R >= 4.2 fuzzes `qnbinom` much less than the older `64*eps` when the tail probability is tiny:
+at `p = 1 - 1e-10` the 64*eps fuzz (1.4e-14) is ~1e-4 of the tail and moves the quantile by
+2-3 counts. `qnbinom` on CPU now searches the survival function with `sf(k) <= (1-p) + 8*eps*p`
+when `1 - p < 1e-6`, and keeps the `64*eps` CDF fuzz elsewhere (the CDF R feeds back through `p`
+carries errors up to ~1e-14 that only the larger fuzz absorbs). This is needed for
+`nb_deviance_moments` to reproduce R's summation window to 1e-10. At `1 - p ~ 1e-13` R's own CDF is
+quantised at 1.1e-16 and its quantile can differ from the exact one by a few counts; not reproducible.

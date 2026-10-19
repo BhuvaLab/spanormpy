@@ -180,10 +180,16 @@ def _pnbinom_cpu(q, mu, size, log):
 
 
 def _qnbinom_cpu(p, mu, size):
-    """Exact quantile: smallest k with CDF(k) >= p * (1 - 64 eps), as R.
+    """Exact quantile: smallest k with CDF(k) >= p, as R, with R's left-continuity fuzz.
 
     scipy's ppf gives the starting point; it is then corrected against the exact
-    CDF (scipy's own CDF loses precision for mu << size).
+    CDF (scipy's own CDF loses precision for mu << size). The fuzz is
+    ``p * (1 - 64 eps)`` on the CDF, except in the far upper tail (1 - p < 1e-6),
+    where the search runs on the survival function, ``sf(k) <= (1 - p) + 8 eps p``.
+    R >= 4.2 fuzzes the upper tail much less than 64 eps; a 64 eps fuzz is a large
+    fraction of a ~1e-10 tail and moves the quantile by several counts. (Further
+    from 1 the CDF R feeds back through p carries errors up to ~1e-14 that only a
+    64 eps fuzz absorbs, so that regime is unchanged.)
     """
     import scipy.stats as ss
 
@@ -191,13 +197,23 @@ def _qnbinom_cpu(p, mu, size):
     point, pois, n, pr, lam = _nb_params(mu, size)
     bad = np.isnan(pv) | np.isnan(mu) | np.isnan(size) | (pv < 0) | (pv > 1)
     target = np.where(bad, 0.5, pv * (1 - 64 * _EPS))
+    upper = ~bad & (1.0 - pv < 1e-6)
+    sf_target = np.where(upper, (1.0 - pv) + 8 * _EPS * pv, 0.0)
+
+    def reached(k):
+        cdf, sf = _cdf_sf_np(k, mu, size)
+        return np.where(upper, sf <= sf_target, cdf >= target)
+
     with np.errstate(all="ignore"):
         k = np.where(pois, ss.poisson.ppf(target, lam), ss.nbinom.ppf(target, n, pr))
+        qu = np.where(upper, 1.0 - pv, 0.5)
+        k_up = np.where(pois, ss.poisson.isf(qu, lam), ss.nbinom.isf(qu, n, pr))
+        k = np.where(upper & np.isfinite(k_up), k_up, k)
         k = np.where(np.isfinite(k), np.maximum(k, 0.0), 0.0)
         todo = ~(bad | point | (pv == 1))
         for _ in range(10_000):
-            up = todo & (_cdf_sf_np(k, mu, size)[0] < target)
-            down = todo & (k > 0) & (_cdf_sf_np(np.maximum(k - 1, 0.0), mu, size)[0] >= target)
+            up = todo & ~reached(k)
+            down = todo & (k > 0) & reached(np.maximum(k - 1, 0.0))
             if not (up | down).any():
                 break
             k = k + up - down
