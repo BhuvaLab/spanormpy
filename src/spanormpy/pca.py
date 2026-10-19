@@ -83,7 +83,9 @@ def _randomized_svd(x: np.ndarray, k: int, n_iter: int = 7, oversample: int = 10
     return q @ u_b[:, :k], s[:k], vt[:k]
 
 
-def calculate_pca(emat: np.ndarray, ncomponents: int, svd_solver: str = "exact") -> dict:
+def calculate_pca(
+    emat: np.ndarray, ncomponents: int, svd_solver: str = "exact", random_state: int = 0
+) -> dict:
     """PCA of the (genes x spots) residuals ``emat``, centred per gene (R ``calculatePCA``).
 
     Returns ``x`` (spots x components), ``rotation`` (genes x components), ``variance``
@@ -97,7 +99,7 @@ def calculate_pca(emat: np.ndarray, ncomponents: int, svd_solver: str = "exact")
         u, s, vt = np.linalg.svd(x, full_matrices=False)
         u, s, vt = u[:, :k], s[:k], vt[:k]
     else:
-        u, s, vt = _randomized_svd(x, k)
+        u, s, vt = _randomized_svd(x, k, seed=random_state)
     variance = (s / np.sqrt(x.shape[0] - 1)) ** 2
     return {
         "x": u * s,
@@ -116,6 +118,7 @@ def spanorm_pca(
     key_added: str = "X_spanorm_pca",
     svd_solver: str = "exact",
     n_jobs: int = 1,
+    random_state: int = 0,
     layer: str | None = None,
     table_key: str | None = None,
     copy: bool = False,
@@ -141,9 +144,11 @@ def spanorm_pca(
         "_loadings"]`` holds the rotation (R ``rotation``), zero for genes not used.
     svd_solver
         ``"exact"`` (``numpy.linalg.svd``, R ``ExactParam``) or ``"randomized"``
-        (randomised SVD for large data; approximate, fixed seed).
+        (randomised SVD for large data; approximate; seeded by ``random_state``).
     n_jobs
-        Accepted for R's ``BPPARAM``; the decomposition uses BLAS threads, so it has no effect.
+        No effect; accepted for compatibility with R's ``BPPARAM``.
+    random_state
+        Seed of the randomised SVD (``svd_solver="randomized"`` only).
     layer, table_key
         Counts layer (default ``X``) and, for ``SpatialData``, the table.
     copy
@@ -171,7 +176,9 @@ def spanorm_pca(
     top = top_svgs(adata, nsvgs, svg_fdr, layer=layer)
     if top["svg_fdr"].isna().any():
         # R: emat[svgs, ] with the "NA" row names topSVGs gives genes without an FDR
-        raise ValueError("subscript out of bounds: some top SVGs have no FDR (NaN)")
+        raise ValueError(
+            "subscript out of bounds: some top SVGs have no FDR (NaN); use a smaller nsvgs or a lower svg_fdr"
+        )
     svgs = list(top.index)
     var_names = np.asarray(adata.var_names)
     rows = pd.Index(var_names).get_indexer(svgs)  # SVG order
@@ -182,7 +189,7 @@ def spanorm_pca(
         )
 
     emat = get_residuals(Y[rows], subset_fit_genes(fit_technical, rows), residuals)
-    pca = calculate_pca(emat, int(ncomponents), svd_solver)
+    pca = calculate_pca(emat, int(ncomponents), svd_solver, int(random_state))
 
     if copy:
         adata = adata.copy()

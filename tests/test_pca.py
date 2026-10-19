@@ -192,5 +192,5 @@ def test_errors(ref):
         spanorm_pca(d[:300].copy())
     e = seeded(ref)
     e.var.loc[e.var_names[0], "svg_fdr"] = np.nan
-    with pytest.raises(ValueError, match="no FDR"):
+    with pytest.raises(ValueError, match="smaller nsvgs"):
         spanorm_pca(e, nsvgs=40, ncomponents=3)

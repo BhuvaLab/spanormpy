@@ -208,3 +208,6 @@ and runs the counts check R's `checkSPE` does (it supersedes the earlier note th
 `getResiduals(...)[svgs, ]` then fails with "subscript out of bounds". `spanorm_pca` raises a `ValueError`
 in the same situation (use a smaller `nsvgs` or set the FDRs). `percentVar`/`variance` cover only the
 `ncomponents` computed components (as in R), so `percent_var` sums to 100 over them, not over all components.
+
+`spanorm_pca(n_jobs=...)` stands in for R's `BPPARAM` but has no effect (the decomposition uses BLAS threads).
+`random_state` seeds the optional randomised SVD (R's `BSPARAM` algorithms have their own RNG use).
