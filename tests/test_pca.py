@@ -195,3 +195,12 @@ def test_errors(ref):
     e.var.loc[e.var_names[0], "svg_fdr"] = np.nan
     with pytest.raises(ValueError, match="smaller nsvgs"):
         spanorm_pca(e, nsvgs=40, ncomponents=3)
+
+
+def test_nsvgs_inf_uses_all_svgs_passing_fdr(ref):
+    # R: nsvgs = Inf is no cap, so every gene passing svg_fdr is used
+    a = seeded(ref)
+    spanorm_pca(a, nsvgs=np.inf, svg_fdr=0.2, ncomponents=3)
+    expected = int((a.var["svg_fdr"] <= 0.2).sum())
+    assert a.uns["X_spanorm_pca"]["params"]["nsvgs"] == expected
+    assert len(a.uns["X_spanorm_pca"]["svgs"]) == expected

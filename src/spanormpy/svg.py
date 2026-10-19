@@ -456,7 +456,7 @@ def top_svgs(
     finite = finite[np.argsort(q[finite], kind="stable")]
     res = res.iloc[np.concatenate([finite, keep[nan[keep]]])].copy()
     res.loc[res["svg_fdr"].isna(), list(_TABLE_COLUMNS)] = np.nan  # R's all-NA rows
-    return res.iloc[: min(int(n), len(res))]
+    return res.iloc[: len(res) if np.isinf(n) else min(int(n), len(res))]  # n = Inf: no cap
 
 
 __all__ = ["fit_spanorm_technical", "spanorm_svg", "svg_test", "top_svgs"]

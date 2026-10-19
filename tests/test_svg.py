@@ -707,3 +707,11 @@ def test_top_svgs_checks_counts_like_checkspe():
         top_svgs(a)
     a.layers["raw"] = np.round(np.abs(a.X))
     assert len(top_svgs(a, layer="raw")) > 0
+
+
+def test_top_svgs_accepts_inf_like_r():
+    a = with_model()
+    spanorm_svg(a, verbose=False)
+    full = top_svgs(a, n=np.inf)
+    assert len(full) == a.n_vars
+    assert len(top_svgs(a, n=np.inf, fdr=0.05)) == int((a.var["svg_fdr"] <= 0.05).sum())
