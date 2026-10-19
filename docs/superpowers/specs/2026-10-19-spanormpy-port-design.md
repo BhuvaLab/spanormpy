@@ -251,3 +251,21 @@ devices), both must be preserved.
 Module layout, internal helper names, choice of h5ad vs npz for
 references, exact quickCluster closeness thresholds within the bounds
 above, docs tooling details, how `n_jobs` is implemented.
+
+## Addendum (2026-10-19): one documentation website for SpaNorm and spanormpy
+
+**User decisions:** a single Quarto website serves both packages. It replaces SpaNorm's pkgdown site, lives in the SpaNorm repo and deploys to the same GitHub Pages URL (bhuvad.github.io/spaNorm). Code examples sit in R | Python tabs (`panel-tabset group="language"`), so picking one language switches every tab on the site and the choice is remembered.
+
+**Design (my calls):**
+- **Location:** `site/` in the SpaNorm repo on a branch `docs/quarto-site`, created from `master` in a separate worktree at `../SpaNorm-site`. The user's own SpaNorm checkout is never touched. `site/` goes in `.Rbuildignore`, and Bioconductor vignettes are unchanged.
+- **Pages:**
+  - Home: what SpaNorm is, the workflow figure, install instructions for R (Bioconductor/GitHub) and Python (pip from GitHub, CUDA torch note), citation.
+  - Get started: the SpaNorm vignette, with every step in R | Python tabs.
+  - Articles: SVGs and PCA; polishing; large data and GPU (the benchmark).
+  - Reference: separate R and Python sections. R pages come from the Rd files via `altdoc`, installed into a project-local R library rather than the user's. Python pages come from `quartodoc`.
+  - R vs Python: the name table plus intentional differences, taken from spanormpy's `docs/r-to-python.md` and `docs/r-discrepancies.md`.
+  - News from NEWS.md, and GitHub links to both repos.
+- **Look:** Bootstrap 5, as SpaNorm's pkgdown uses, with a navbar and sidebar layout similar to pkgdown.
+- **Execution:** R chunks run with knitr and Python chunks with reticulate, using the spanormpy env. Outputs are stored with `freeze: auto` and the `_freeze/` directory is committed, so CI only renders.
+- **CI:** a new `.github/workflows/quarto-site.yaml` replaces `pkgdown.yaml`. On pushes to master it installs R + SpaNorm + altdoc and Python + spanormpy (git) + quartodoc, renders, and deploys to `gh-pages`.
+- **Release gate:** nothing is merged into SpaNorm master and nothing is deployed until the user says so. Pushing the `docs/quarto-site` branch is fine.
