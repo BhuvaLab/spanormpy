@@ -117,7 +117,7 @@ class NBBlockDesign:
         )
 
 
-def nb_block_design(X, Z, block, rank_tol: float = 1e-10) -> NBBlockDesign:
+def nb_block_design(X, Z, block, rank_tol: float = 1e-10, device=None) -> NBBlockDesign:
     """Describe the design ``[X | Z_1 | ... | Z_G]`` in compact form.
 
     Parameters
@@ -134,6 +134,8 @@ def nb_block_design(X, Z, block, rank_tol: float = 1e-10) -> NBBlockDesign:
         tolerance in (0, 1) below which a group's block is treated as
         rank-deficient and inverted by a truncated eigendecomposition (a
         generalised inverse; see R's ``nbBlockDesign`` "Degenerate blocks").
+    device
+        optional torch device to place the design on (default: where ``X`` is).
 
     Returns
     -------
@@ -145,6 +147,8 @@ def nb_block_design(X, Z, block, rank_tol: float = 1e-10) -> NBBlockDesign:
     xnames, znames = _colnames(X), _colnames(Z)
     X = _as_numeric_matrix(X, "X")
     Z = _as_numeric_matrix(Z, "Z")
+    if device is not None:
+        X = X.to(device)
     Z = Z.to(device=X.device, dtype=X.dtype)
     n = X.shape[0]
     if X.shape[1] < 1:
@@ -197,23 +201,36 @@ def _block_dense_absorb(D: NBBlockDesign) -> np.ndarray:
     return np.concatenate([np.full(D.px, -1), np.repeat(np.arange(D.G), D.q)])
 
 
-def _block_expand(D: NBBlockDesign, v, what: str) -> np.ndarray:
+def _block_expand(D: NBBlockDesign, v, what: str):
     """Expand a per-column vector given for ``X`` and ``Z`` to the implied design.
 
     Length ``p_x + G q`` is returned as is; ``p_x + q`` has its ``Z`` part
-    repeated for every group; a single value is recycled.
+    repeated for every group; a single value is recycled. A torch tensor stays a
+    tensor on its own device; anything else is returned as a numpy array.
     """
-    v = np.atleast_1d(np.asarray(v))
-    p = D.px + D.G * D.q
-    if v.size == 1:
-        return np.repeat(v, p)
-    if v.size == p:
-        return v
-    if v.size == D.px + D.q:
-        return np.concatenate([v[: D.px], np.tile(v[D.px :], D.G)])
+    if isinstance(v, torch.Tensor):
+        v = v.reshape(-1)
+        n = v.numel()
+        p = D.px + D.G * D.q
+        if n == 1:
+            return v.expand(p).clone()
+        if n == p:
+            return v
+        if n == D.px + D.q:
+            return torch.cat([v[: D.px], v[D.px :].repeat(D.G)])
+    else:
+        v = np.atleast_1d(np.asarray(v))
+        n = v.size
+        p = D.px + D.G * D.q
+        if n == 1:
+            return np.repeat(v, p)
+        if n == p:
+            return v
+        if n == D.px + D.q:
+            return np.concatenate([v[: D.px], np.tile(v[D.px :], D.G)])
     raise ValueError(
         f"'{what}' must be a single value, one per column of the block design ({p}), "
-        f"or one per column of [X | Z] ({D.px + D.q}); {v.size} supplied"
+        f"or one per column of [X | Z] ({D.px + D.q}); {n} supplied"
     )
 
 

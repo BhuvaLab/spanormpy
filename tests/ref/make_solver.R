@@ -139,6 +139,64 @@ f3 <- make_block(c(80, 0, 70, 50), 5)
 set.seed(23); w3 <- matrix(runif(2 * nrow(f3$X), 0.1, 2), 2)
 blockcase("blk_empty", f3, c(rep(0, 3), rep(1e-3, 2)), w3)
 
+# --- degenerate groups (q = 3) ----------------------------------------------
+make_block3 <- function(sizes, seed) {
+  set.seed(seed)
+  lev <- sprintf("P%02d", seq_along(sizes))
+  blk <- factor(rep(lev, sizes), levels = lev)
+  nn <- length(blk); blk <- blk[sample.int(nn)]
+  Xb <- matrix(rnorm(nn * 3), nn, 3, dimnames = list(NULL, paste0("n", 1:3)))
+  l <- rnorm(nn, sd = 0.5)
+  Zb <- cbind(int = 1, ls1 = l * rnorm(nn), ls2 = l * rnorm(nn))
+  list(X = Xb, Z = Zb, block = blk, D = nbBlockDesign(Xb, Zb, blk))
+}
+# patient 4 has 2 cells and 3 unpenalised block columns: rank 2
+fa <- make_block3(c(150, 60, 220, 2, 90), 6)
+set.seed(41); wa <- matrix(runif(2 * nrow(fa$X), 0.1, 2), 2)
+blockcase("blk_alias3", fa, rep(0, 6), wa)
+Da <- fa$D; Wa <- as.matrix(Da); ga <- ns(".blockDenseAbsorb")(Da)
+g4 <- Da$px + 3L * Da$q + seq_len(Da$q)
+drop <- g4[-(1:2)]                      # reduced design: first two columns of patient 4
+red_W <- Wa[, -drop]; red_group <- ga[-drop]
+al <- list(drop = drop, w = wa[1, ])
+al$red_xcov <- newton(red_W, rep(0, ncol(red_W)), red_group)$xcov(wa[1, ])
+sa <- newton(Wa, rep(0, ncol(Wa)), ga)
+al$dense_factor_null <- as.integer(is.null(sa$factor(wa[1, ])))
+al$dense_solve_null <- as.integer(is.null(sa$solve(wa[1, ], out$blk_alias3$Sc[1, ])))
+al$dense_xcov_null <- as.integer(is.null(sa$xcov(wa[1, ])))
+out$alias3_extra <- al
+# nearly aliased: patient 2's last column = its first spline column + noise.
+# 2e-5 keeps every unit-diagonal Cholesky pivot^2 (~1e-9) above rank.tol (1e-10)
+# at kappa > 1e8, so the block is solved exactly; 1e-6 falls below it (eigen route).
+for (nz in c(2e-5, 1e-6)) {
+  set.seed(7)
+  fn <- make_block3(c(150, 60, 220, 35, 90), 7)
+  cells <- which(as.integer(fn$block) == 2L)
+  Zn <- fn$Z; Zn[cells, 3] <- Zn[cells, 2] + nz * rnorm(length(cells))
+  Dn <- nbBlockDesign(fn$X, Zn, fn$block); fn$Z <- Zn; fn$D <- Dn
+  set.seed(42); wn <- matrix(runif(1 * nrow(fn$X), 0.1, 2), 1)
+  tag <- if (nz > 1e-5) "blk_near" else "blk_near_trunc"
+  blockcase(tag, fn, rep(0, 6), wn)
+  Wn <- as.matrix(Dn)
+  sn2 <- newton(Wn, rep(0, ncol(Wn)), ns(".blockDenseAbsorb")(Dn))
+  st2 <- sn2$factor(wn[1, ])
+  out[[paste0(tag, "_extra")]] <- list(
+    dense_null = as.integer(is.null(st2)),
+    step = if (is.null(st2)) numeric(0) else sn2$solve(st2, out[[tag]]$Sc[1, ]),
+    xcov = if (is.null(st2)) numeric(0) else sn2$xcov(st2))
+}
+# partial keep: a column that is zero (and unpenalised) in every group but one
+fp <- make_block3(c(80, 60, 70, 50), 8)
+Zp <- fp$Z; Zp[as.integer(fp$block) != 1L, 3] <- 0
+fp$Z <- Zp; fp$D <- nbBlockDesign(fp$X, Zp, fp$block)
+set.seed(43); wp <- matrix(runif(2 * nrow(fp$X), 0.1, 2), 2)
+blockcase("blk_partial", fp, c(rep(0, 3), 0, 0, 0), wp)
+# the dense grouped path hits an exactly zero unpenalised diagonal there
+Wp <- as.matrix(fp$D); sp <- newton(Wp, rep(0, ncol(Wp)), ns(".blockDenseAbsorb")(fp$D))
+out$partial_extra <- list(dense_factor_null = as.integer(is.null(sp$factor(wp[1, ]))),
+                          dense_solve_null = as.integer(is.null(sp$solve(wp[1, ], out$blk_partial$Sc[1, ]))),
+                          dense_xcov_null = as.integer(is.null(sp$xcov(wp[1, ]))))
+
 # dense per-sample (blocked) absorption on the main design
 Wb <- as.matrix(f1$D); grpb <- ns(".blockDenseAbsorb")(f1$D)
 penb <- ns(".blockExpand")(f1$D, c(0, 0, 0, 0.5, 0.5), "pen")

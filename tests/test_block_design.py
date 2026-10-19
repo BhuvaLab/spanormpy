@@ -42,21 +42,30 @@ def close(a, b, rtol=RTOL, atol=ATOL):
     np.testing.assert_allclose(N(a) if isinstance(a, torch.Tensor) else a, b, rtol=rtol, atol=atol)
 
 
-def build(r):
+def build(r, device="cpu"):
     return nb_block_design(
         pd.DataFrame(r["X"], columns=["n1", "n2", "n3"]),
-        pd.DataFrame(r["Z"], columns=["int", "ls1"]),
+        pd.DataFrame(r["Z"], columns=["int", "ls1", "ls2"][: np.shape(r["Z"])[1]]),
         pd.Categorical(r["block"], categories=list(np.atleast_1d(r["levels"]))),
+        device=device,
     )
 
 
-CASES = ["blk_main", "blk_aliased", "blk_empty"]
+CASES = [
+    "blk_main",
+    "blk_aliased",
+    "blk_empty",
+    "blk_alias3",
+    "blk_near",
+    "blk_near_trunc",
+    "blk_partial",
+]
 
 
 @pytest.mark.parametrize("case", CASES)
-def test_dense_expansion_and_helpers_match_r(ref, case):
+def test_dense_expansion_and_helpers_match_r(ref, case, device):
     r = ref[case]
-    D = build(r)
+    D = build(r, device)
     assert D.shape == r["dense"].shape
     assert D.colnames == list(r["colnames"])
     np.testing.assert_allclose(D.to_dense(), r["dense"], rtol=0, atol=0)
@@ -69,7 +78,7 @@ def test_dense_expansion_and_helpers_match_r(ref, case):
     close(_block_eta_batch(D, r["A8"]), r["eta8"], 1e-12)
     close(_block_score_batch(r["R8"], D), r["score8"], 1e-12)
     # design-agnostic helpers: same answer from the compact and the dense design
-    W = as_tensor(r["dense"], "cpu")
+    W = as_tensor(r["dense"], device)
     close(_design_eta(D, r["a"]), N(_design_eta(W, r["a"])), 1e-12)
     close(_design_cross(D, r["r"]), N(_design_cross(W, r["r"])), 1e-12)
     for j in range(D.shape[1]):
@@ -81,28 +90,31 @@ def test_dense_expansion_and_helpers_match_r(ref, case):
 
 
 @pytest.mark.parametrize("case", CASES)
-def test_compact_solver_matches_r(ref, case):
+def test_compact_solver_matches_r(ref, case, device):
     r = ref[case]
-    D = build(r)
+    D = build(r, device)
     sol = nb_newton_solver(D, r["pen_xz"])  # [X | Z] penalty is expanded to every group
+    # blk_near has kappa ~ 1e9 on the unit-diagonal scale, so rounding differences between
+    # R's BLAS and torch's reach ~kappa * eps ~ 1e-7 in S; every other case is well conditioned
+    tol = 1e-6 if case == "blk_near" else RTOL
     wts, Sc = np.atleast_2d(r["wts"]), np.atleast_2d(r["Sc"])
     for g in range(wts.shape[0]):
         st = sol.factor(wts[g])
         np.testing.assert_array_equal(st.rank, np.atleast_2d(r["rank"])[g])
-        close(st.S, r["S"][g])
-        close(st.B, r["B"][g])
+        close(st.S, r["S"][g], tol)
+        close(st.B, r["B"][g], tol)
         for k in range(D.G):
-            close(st.H[k] @ st.H[k].T, r["Cinv"][g, k])
-        close(sol.solve(st, Sc[g]), r["step"][g])
-        close(sol.xcov(st), r["xcov"][g])
+            close(st.H[k] @ st.H[k].T, r["Cinv"][g, k], tol)
+        close(sol.solve(st, Sc[g]), r["step"][g], tol)
+        close(sol.xcov(st), r["xcov"][g], tol)
         # a weight vector is accepted wherever a state is
-        close(sol.solve(wts[g], Sc[g]), r["step"][g])
-        close(sol.xcov(wts[g]), r["xcov"][g])
+        close(sol.solve(wts[g], Sc[g]), r["step"][g], tol)
+        close(sol.xcov(wts[g]), r["xcov"][g], tol)
 
 
-def test_compact_solver_matches_dense_oracles(ref):
+def test_compact_solver_matches_dense_oracles(ref, device):
     r = ref["blk_main"]
-    D = build(r)
+    D = build(r, device)
     pen = _block_expand(D, r["pen_xz"], "pen")
     sc = nb_newton_solver(D, r["pen_xz"])
     W = r["dense"]
@@ -112,19 +124,19 @@ def test_compact_solver_matches_dense_oracles(ref):
     close(sc.xcov(w), np.linalg.inv(info)[:3, :3], 1e-9)
     # the dense grouped solver on the expanded design agrees
     group = np.where(_block_dense_absorb(D) < 0, None, _block_dense_absorb(D)).astype(object)
-    sd = nb_newton_solver(as_tensor(W, "cpu"), pen, group)
+    sd = nb_newton_solver(as_tensor(W, device), pen, group)
     close(sc.solve(w, s), N(sd.solve(w, s)), 1e-10)
     np.testing.assert_array_equal(sc.factor(w).rank, [2] * D.G)
 
 
-def test_blocked_dense_path_matches_r(ref):
+def test_blocked_dense_path_matches_r(ref, device):
     b = ref["blocked"]
     D = build(ref["blk_main"])
     np.testing.assert_array_equal(
         _block_dense_absorb(D) + 1, b["group"]
     )  # R ids are 1-based with NA -> 0 in the file
     group = np.where(b["group"] == 0, None, b["group"] - 1).astype(object)
-    sol = nb_newton_solver(as_tensor(b["W"], "cpu"), b["pen"], group)
+    sol = nb_newton_solver(as_tensor(b["W"], device), b["pen"], group)
     close(sol.solve(b["w"], b["s"]), b["step"])
 
 
@@ -183,8 +195,10 @@ def test_block_design_validation():
         nb_block_design(X, np.full((10, 1), "a"), b)
 
 
-def test_block_expand():
-    D = nb_block_design(np.ones((6, 3)), np.ones((6, 2)), np.tile(["a", "b", "c"], 2))
+def test_block_expand(device):
+    D = nb_block_design(
+        np.ones((6, 3)), np.ones((6, 2)), np.tile(["a", "b", "c"], 2), device=device
+    )
     q, G = 2, 3
     np.testing.assert_array_equal(
         _block_expand(D, [1, 2, 3, 11, 12], "v"), [1, 2, 3] + [11, 12] * G
@@ -227,3 +241,92 @@ def test_sorted_and_unsorted_cells_agree():
     D = nb_block_design(X, Z, block)
     a = rng.standard_normal(D.shape[1])
     close(_block_eta_vec(D, a), D.to_dense() @ a, 1e-12)
+
+
+def test_block_expand_accepts_device_tensor(device):
+    D = nb_block_design(
+        np.ones((6, 3)), np.ones((6, 2)), np.tile(["a", "b", "c"], 2), device=device
+    )
+    v = torch.tensor([1.0, 2, 3, 11, 12], dtype=torch.float64, device=device)
+    got = _block_expand(D, v, "v")
+    assert got.device == v.device
+    np.testing.assert_array_equal(N(got), [1, 2, 3] + [11, 12] * 3)
+    assert _block_expand(D, v[:1], "v").numel() == 3 + 6
+
+
+def test_aliased_group_generalised_inverse_and_dense_failure(ref, device):
+    r, x = ref["blk_alias3"], ref["alias3_extra"]
+    D = build(r, device)
+    sol = nb_newton_solver(D, r["pen_xz"])
+    w = x["w"]
+    st = sol.factor(w)
+    np.testing.assert_array_equal(st.rank, [3, 3, 3, 2, 3])
+    # dense-column covariance equals that of the design without the aliased columns
+    close(sol.xcov(w), x["red_xcov"], 1e-8)
+    assert x["dense_factor_null"] == 1  # R's dense grouped path flags it singular
+    assert np.size(x["drop"]) == 1  # 3 columns, rank 2
+
+
+def test_dense_grouped_solver_flags_exactly_singular_block(ref, device):
+    # a block column that is exactly zero and unpenalised in a group: Cholesky of
+    # that group's C fails, factor() is None and None flows through solve/xcov
+    r, x = ref["blk_partial"], ref["partial_extra"]
+    assert (x["dense_factor_null"], x["dense_solve_null"], x["dense_xcov_null"]) == (1, 1, 1)
+    D = build(r, device)
+    ga = _block_dense_absorb(D)
+    grp = np.where(ga < 0, None, ga).astype(object)
+    sd = nb_newton_solver(as_tensor(r["dense"], device), np.zeros(D.shape[1]), grp)
+    w, s = np.atleast_2d(r["wts"])[0], np.ones(D.shape[1])
+    assert sd.factor(w) is None
+    assert sd.solve(w, s) is None
+    assert sd.xcov(w) is None
+    assert sd.solve(None, s) is None
+    assert sd.xcov(None) is None
+
+
+def test_near_aliased_group_is_solved_exactly_like_the_dense_path(ref, device):
+    # kappa > 1e8 on the unit-diagonal scale yet every pivot^2 stays above rank_tol,
+    # so the compact path solves the block exactly, as the dense grouped path does
+    r, x = ref["blk_near"], ref["blk_near_extra"]
+    assert x["dense_null"] == 0
+    D = build(r, device)
+    sol = nb_newton_solver(D, r["pen_xz"])
+    w, s = np.atleast_2d(r["wts"])[0], np.atleast_2d(r["Sc"])[0]
+    st = sol.factor(w)
+    np.testing.assert_array_equal(st.rank, [3] * D.G)
+    got = sol.solve(st, s)
+    close(got, x["step"], 1e-6)  # near-null direction is ill determined (R test: 1e-6)
+    close(sol.xcov(st), x["xcov"], 1e-6)
+    ga = _block_dense_absorb(D)
+    grp = np.where(ga < 0, None, ga).astype(object)
+    sd = nb_newton_solver(as_tensor(r["dense"], device), np.zeros(D.shape[1]), grp)
+    close(got, N(sd.solve(w, s)), 1e-6)
+
+
+def test_truncated_eigen_route_below_rank_tol_matches_r(ref):
+    # same design with 1e-6 noise: the pivot falls below rank_tol, one group is truncated
+    r = ref["blk_near_trunc"]
+    st = nb_newton_solver(build(r), r["pen_xz"]).factor(np.atleast_2d(r["wts"])[0])
+    np.testing.assert_array_equal(st.rank, [3, 2, 3, 3, 3])
+
+
+def test_partial_keep_block_uses_remaining_columns(ref, device):
+    # a block column that is zero and unpenalised in a group is dropped from that
+    # group's block while the others stay: rank 2 there, 3 in the group carrying it
+    r = ref["blk_partial"]
+    D = build(r, device)
+    st = nb_newton_solver(D, r["pen_xz"]).factor(np.atleast_2d(r["wts"])[0])
+    np.testing.assert_array_equal(st.rank, [3, 2, 2, 2])
+    np.testing.assert_array_equal(st.rank, np.atleast_2d(r["rank"])[0])
+
+
+def test_non_finite_weights_give_none_from_compact_solver(ref, device):
+    D = build(ref["blk_main"], device)
+    sol = nb_newton_solver(D, ref["blk_main"]["pen_xz"])
+    w = np.atleast_2d(ref["blk_main"]["wts"])[0].copy()
+    w[3] = np.nan
+    assert sol.factor(w) is None
+    assert sol.solve(w, np.ones(D.shape[1])) is None
+    assert sol.xcov(w) is None
+    assert sol.solve(None, np.ones(D.shape[1])) is None
+    assert sol.xcov(None) is None
