@@ -32,6 +32,9 @@ class SpaNormFit:
     # Global dispersion-winsorisation threshold carried by a gene subset (R's
     # 'psi.max' attribute set by subsetFitGenes). None means "compute from psi".
     psi_max: float | None = None
+    # Column names shared by W and alpha (R: colnames(W) == colnames(alpha)); used by
+    # the SVG nesting check. None when unnamed.
+    colnames: np.ndarray | None = None
 
     def validate(self) -> bool:
         """Check the fit's consistency (R ``validSpaNormFit``); raise ``ValueError``."""
@@ -84,6 +87,8 @@ def validate_fit(fit: SpaNormFit) -> bool:
     batch = None if fit.batch is None else np.asarray(fit.batch)
     if batch is not None and batch.ndim <= 1 and len(np.atleast_1d(batch)) != fit.ncells:
         raise ValueError("length of 'batch' does not match 'ncells'")
+    if fit.colnames is not None and len(np.atleast_1d(fit.colnames)) != W.shape[1]:
+        raise ValueError("length of 'colnames' does not match ncol of 'W'")
     if len(sampling) != fit.ncells:
         raise ValueError("length of 'sampling' does not match 'ncells'")
     if batch is not None and batch.ndim == 2 and batch.shape[0] != fit.ncells:
@@ -147,10 +152,15 @@ def subset_genes(fit: SpaNormFit, mask) -> SpaNormFit:
 # ---------------------------------------------------------------- AnnData storage
 
 
+_NONE = "__spanorm_none__"  # h5ad cannot hold None; stands in for R's NULL
+
+
 def _clean(x):
-    """Make a value h5ad-serialisable: drop None, lists -> arrays, nested dicts recursed."""
+    """Make a value h5ad-serialisable: None -> sentinel, lists -> arrays, dicts recursed."""
+    if x is None:
+        return _NONE
     if isinstance(x, dict):
-        return {str(k): _clean(v) for k, v in x.items() if v is not None}
+        return {str(k): _clean(v) for k, v in x.items()}
     if isinstance(x, (list, tuple)):
         return np.asarray(x)
     if isinstance(x, np.ndarray) and x.dtype == object:
@@ -160,6 +170,8 @@ def _clean(x):
 
 def _restore(x):
     """Inverse of ``_clean`` after an h5ad round trip: numpy scalars -> Python, object -> str."""
+    if isinstance(x, str) and x == _NONE:
+        return None
     if isinstance(x, dict):
         return {k: _restore(v) for k, v in x.items()}
     if isinstance(x, np.ndarray):
@@ -273,6 +285,8 @@ def store_fit(adata, fit: SpaNormFit, name: str = "spanorm") -> None:
         "psi_max": float(psi_max),
         "batch": bmeta,
     }
+    if fit.colnames is not None:
+        meta["colnames"] = np.atleast_1d(np.asarray(fit.colnames)).astype(str)
 
     if is_polished(fit):
         pol = fit.polish
@@ -325,13 +339,19 @@ def load_fit(adata, name: str = "spanorm", validate: bool = True) -> SpaNormFit 
     meta = _restore(meta)
     bm = meta["batch"]
     batch = None
-    if bm["kind"] == "vector":
-        col = adata.obs[f"{p}batch"]
-        batch = np.asarray(col.astype(str)) if bm["is_str"] else col.to_numpy()
-    elif bm["kind"] == "matrix":
-        m = adata.obsm[f"{p}batch"]
-        m = m.to_numpy() if isinstance(m, pd.DataFrame) else np.asarray(m)
-        batch = m.astype(str) if bm["is_str"] else m
+    try:
+        if bm["kind"] == "vector":
+            col = adata.obs[f"{p}batch"]
+            batch = np.asarray(col.astype(str)) if bm["is_str"] else col.to_numpy()
+        elif bm["kind"] == "matrix":
+            m = adata.obsm[f"{p}batch"]
+            m = m.to_numpy() if isinstance(m, pd.DataFrame) else np.asarray(m)
+            batch = m.astype(str) if bm["is_str"] else m
+    except KeyError as e:
+        raise ValueError(
+            f"the stored '{name}' fit is incomplete: {e} is missing from 'adata'. "
+            "Please rerun the fitting function."
+        ) from None
 
     polish: dict = {}
     if "polish" in meta:
@@ -361,6 +381,7 @@ def load_fit(adata, name: str = "spanorm", validate: bool = True) -> SpaNormFit 
         loglik=np.atleast_1d(meta["loglik"]).astype(float),
         sampling=sampling,
         polish=polish,
+        colnames=np.atleast_1d(meta["colnames"]).astype(str) if "colnames" in meta else None,
     )
     # psi_max is only carried when the genes are a subset of the stored fit's
     stored = float(meta["psi_max"])

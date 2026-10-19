@@ -44,6 +44,7 @@ def make_fit(batch="none", polish=False, ngenes=NG, ncells=NC, seed=0):
         loglik=-np.array([5.0, 4.0, 3.5]),
         sampling=np.array((["all", "glm", "dispersion"] * ncells)[:ncells]),
     )
+    fit.colnames = np.array(["(Intercept)", "bio1", "bio2"])
     if polish:
         fit.polish = {
             "settings": {
@@ -55,6 +56,7 @@ def make_fit(batch="none", polish=False, ngenes=NG, ncells=NC, seed=0):
                 "psi_range": np.array([1e-3, 1e3]),
                 "ls_converged": True,
                 "SpaNorm": "1.7.15",
+                "cells": None,
             },
             "genes": pd.DataFrame(
                 {
@@ -116,6 +118,26 @@ def test_store_load_roundtrip(batch, polish):
     assert ad.obsm["spanorm_W"].shape == (NC, P)
     assert {"spanorm_gmean", "spanorm_psi"} <= set(ad.var.columns)
     assert "spanorm_sampling" in ad.obs.columns
+
+
+def test_none_setting_and_colnames_and_missing_batch():
+    fit = make_fit("vector", polish=True)
+    ad = make_adata(fit)
+    store_fit(ad, fit)
+    back = load_fit(ad)
+    assert back.polish["settings"]["cells"] is None
+    np.testing.assert_array_equal(back.colnames, fit.colnames)
+    assert load_fit(ad[:, :3].copy()).colnames.tolist() == fit.colnames.tolist()
+    fit.colnames = None
+    store_fit(ad, fit)
+    assert load_fit(ad).colnames is None
+    fit.colnames = np.array(["a", "b"])
+    with pytest.raises(ValueError, match="colnames"):
+        fit.validate()
+    store_fit(ad, make_fit("vector"))
+    del ad.obs["spanorm_batch"]
+    with pytest.raises(ValueError, match="incomplete"):
+        load_fit(ad)
 
 
 def test_name_prefix_and_missing():
