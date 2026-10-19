@@ -359,10 +359,17 @@ def spanorm(
 
     # ---- .spaNormCore: reuse a stored fit or (re)fit
     existing = load_fit(adata, "spanorm", validate=False)
+    # R refits whenever the stored fit's ncells differs from the data (a spot subset of an
+    # object carrying a fit). AnnData slices W/sampling with the spots, so the stored ncells
+    # is the only trace of the original size. Genes are different: a gene subset reuses the
+    # fit (spec Review Focus 2), see docs/r-discrepancies.md.
+    fit_ncells = (adata.uns.get("spanorm", {}).get("spanorm", {}) or {}).get("ncells")
+    spots_subset = fit_ncells is not None and int(fit_ncells) != adata.n_obs
     refit = True
     if (
         not overwrite
         and existing is not None
+        and not spots_subset
         and existing.ngenes == Y.shape[0]
         and existing.ncells == Y.shape[1]
         and existing.gene_model == gene_model

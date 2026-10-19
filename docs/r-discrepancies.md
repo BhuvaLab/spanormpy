@@ -125,3 +125,22 @@ dense input and a CSR layer for sparse input; values are identical.
 
 Python's `quick_cluster` and RNG differ from R's, so the default pipeline is checked for
 closeness only (see `tests/test_spanorm.py::test_default_pipeline_close`).
+
+## Rerun after a gene or spot subset
+
+R keeps `metadata(spe)$SpaNorm` when an SPE is subset, and `.spaNormCore` refits because
+`fit$ngenes != nrow(emat)` (genes) or `fit$ncells != ncol(emat)` (spots). `spanorm` on AnnData
+differs for genes only: per-gene fit data live in `var`/`varm`, so a gene subset carries its
+slice of the fit and is **reused** (with the whole fit's `psi_max`, as R's `subsetFitGenes`), which
+equals R's adjustment of the full fit on those genes. R's refit behaviour is reachable with
+`overwrite=True` (pinned against R in `tests/test_api_robustness.py`). A spot subset **refits**,
+as R does (detected through the `ncells` stored in `uns["spanorm"]["spanorm"]`).
+
+## Degenerate inputs
+
+An all-zero gene and a zero-total spot with supplied size factors are handled by R (finite
+logcounts, size factor floored at 1e-8) and identically here. Without supplied size factors R's
+`calculateSumFactors` fails on a zero-total spot ("size factors should be positive"); so does
+`spanorm`. A batch factor with an unused level gives an all-zero unregularised column and a
+singular system in both (R: `dgesv ... exactly singular`; here torch's `LinAlgError`, a different
+exception type).
