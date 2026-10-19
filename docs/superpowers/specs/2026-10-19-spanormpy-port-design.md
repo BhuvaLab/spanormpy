@@ -216,9 +216,18 @@ devices), both must be preserved.
 - **Precomputed size factors.** R uses `sizeFactors(spe)` when set. Python
   takes an explicit `size_factors=` argument (array, or the name of an
   `obs` column). It never reads a `size_factors` column implicitly, because
-  other scanpy tools write columns with that name. When none is given, it
-  computes them the way R does (quickCluster + sum factors) and writes
-  them to `obs["spanorm_size_factors"]`.
+  other scanpy tools write columns with that name. Passing them is mainly
+  for comparison with R.
+- **Default size factors (user decision).** spanormpy has its own built-in
+  size factor computation that works like scran: quickCluster-style
+  clustering followed by pooled deconvolution sum factors. It runs in pure
+  Python with no R needed, and it is the default whenever `size_factors=`
+  is not given. It is also a public function (e.g.
+  `spanormpy.compute_size_factors(adata, clusters=None, ...)`) so users
+  can run it on its own or pass their own clusters. Results go to
+  `obs["spanorm_size_factors"]`. Given R's clusters, it must match
+  `scran::calculateSumFactors` exactly; with its own clustering, it must
+  meet the "close" check below.
 - **Reference backend.** R references come from R's CPU path. Python's CPU
   and GPU paths (both float64) are tested against those references with the
   same tolerances. If R's GPU path turns out to be a different algorithm
