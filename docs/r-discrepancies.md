@@ -154,3 +154,24 @@ when `1 - p < 1e-6`, and keeps the `64*eps` CDF fuzz elsewhere (the CDF R feeds 
 carries errors up to ~1e-14 that only the larger fuzz absorbs). This is needed for
 `nb_deviance_moments` to reproduce R's summation window to 1e-10. At `1 - p ~ 1e-13` R's own CDF is
 quantised at 1.1e-16 and its quantile can differ from the exact one by a few counts; not reproducible.
+
+## polish_spanorm after a gene or spot subset
+
+`polishSpaNorm` calls `getSpaNormFit`, which in R errors when `fit$ngenes`/`fit$ncells` differ from
+the object. `polish_spanorm` follows R for **spot** subsets (detected through the `ncells` stored in
+`uns["spanorm"][name]`, `_fit.fit_is_stale_for_spots`): it raises "... model dimensions do not match
+the data. Please rerun 'spanorm'." (or `'spanorm_svg'` for the null fit), also for a gene plus spot
+subset, and writes nothing. A **gene** subset reuses the stored fits (see "Rerun after a gene or spot
+subset"): the genes are polished independently, so the result equals the full run's genes. The
+polished subset fit keeps the whole fit's `psi_max` (threshold from the unpolished dispersions),
+because the other genes' polished dispersions are not available. A spot reorder keeps the count and
+reuses the fit. `get_spanorm_fit(validate=True)` raises the same error.
+
+## polish_spanorm bookkeeping
+
+`adata.uns["spanorm"]["adj_method"]` is updated to the method used to rewrite `logcounts`. SVG
+columns removed on polishing are `svg_F`, `svg_p`, `svg_fdr`, `svg_F_raw` (R: `svg.F`, `svg.p`,
+`svg.fdr`). The polish settings key `SpaNorm` (R package version) is `spanorm` (spanormpy version).
+Per-gene `held_out` is stored as a categorical `var` column (h5ad cannot hold missing strings in an
+object column). R's Seurat/DelayedArray branches and the pre-`polish`-slot RDS fixture have no
+Python counterpart.

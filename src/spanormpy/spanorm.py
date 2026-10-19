@@ -13,7 +13,7 @@ import numpy as np
 import scipy.sparse as sp
 
 from ._adjust import get_adjustment_fun, get_gene_models, normalise_block_size, normalise_blocked
-from ._fit import SpaNormFit, _as_actual, load_fit, store_fit
+from ._fit import SpaNormFit, _as_actual, fit_is_stale_for_spots, load_fit, store_fit
 from ._fitnb import _message, _quiet, fit_spanorm_nb
 from ._io import batch_design, get_coords, get_counts, resolve_input
 from ._tps import bs_tps
@@ -360,11 +360,9 @@ def spanorm(
     # ---- .spaNormCore: reuse a stored fit or (re)fit
     existing = load_fit(adata, "spanorm", validate=False)
     # R refits whenever the stored fit's ncells differs from the data (a spot subset of an
-    # object carrying a fit). AnnData slices W/sampling with the spots, so the stored ncells
-    # is the only trace of the original size. Genes are different: a gene subset reuses the
-    # fit (spec Review Focus 2), see docs/r-discrepancies.md.
-    fit_ncells = (adata.uns.get("spanorm", {}).get("spanorm", {}) or {}).get("ncells")
-    spots_subset = fit_ncells is not None and int(fit_ncells) != adata.n_obs
+    # object carrying a fit; see fit_is_stale_for_spots). Genes are different: a gene subset
+    # reuses the fit (spec Review Focus 2), see docs/r-discrepancies.md.
+    spots_subset = fit_is_stale_for_spots(adata, "spanorm")
     refit = True
     if (
         not overwrite

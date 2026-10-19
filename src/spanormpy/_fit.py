@@ -235,6 +235,12 @@ def store_fit(adata, fit: SpaNormFit, name: str = "spanorm") -> None:
     ``name`` is the prefix (``spanorm``, ``spanorm_null``, ``spanorm_unpolished``, ...).
     A view is first converted to an actual AnnData. Anything stored earlier under
     ``name`` (including polish columns) is replaced.
+
+    ``uns["spanorm"][name]["ncells"]`` is load-bearing: :func:`load_fit` overwrites
+    ``fit.ncells`` with the current ``n_obs`` (the per-spot slots slice with the spots), so
+    this stored value is the only trace of the number of spots the fit was computed on.
+    :func:`fit_is_stale_for_spots` compares it with ``n_obs`` to detect a spot subset, for
+    which the fit is stale (its design ``W`` was built on the original spots).
     """
     fit.validate()
     if fit.ngenes != adata.n_vars or fit.ncells != adata.n_obs:
@@ -296,7 +302,12 @@ def store_fit(adata, fit: SpaNormFit, name: str = "spanorm") -> None:
             raise ValueError("'polish[\"genes\"]' must have one row per gene")
         pmeta["gene_cols"] = np.asarray([str(c) for c in genes.columns], dtype=str)
         for c in genes.columns:
-            adata.var[f"{p}polish_{c}"] = genes[c].to_numpy()
+            col = genes[c]
+            # h5ad cannot write an object column holding missing values (R's NA labels such
+            # as held_out); a categorical keeps them
+            adata.var[f"{p}polish_{c}"] = (
+                pd.Categorical(col) if col.dtype == object else col.to_numpy()
+            )
         extras, scalars = {}, {}
         for k, v in pol.items():
             if k in ("settings", "genes") or v is None:
@@ -393,15 +404,38 @@ def load_fit(adata, name: str = "spanorm", validate: bool = True) -> SpaNormFit 
     return fit
 
 
+def fit_is_stale_for_spots(adata, name: str = "spanorm") -> bool:
+    """Was the fit stored under ``name`` computed on a different number of spots than ``adata`` has?
+
+    R keeps ``metadata(spe)$SpaNorm`` through a subset of the object and flags it stale when
+    ``fit$ncells != ncol(spe)``. Here per-spot slots slice with the spots, so the only trace
+    of the original size is ``uns["spanorm"][name]["ncells"]`` (see :func:`store_fit`). A
+    reordering of the spots keeps the count and is not stale; a gene subset is not stale
+    either (the per-gene slots slice consistently; see ``docs/r-discrepancies.md``).
+    Returns False when no fit is stored under ``name``.
+    """
+    meta = (adata.uns.get("spanorm", {}) or {}).get(name)
+    ncells = meta.get("ncells") if isinstance(meta, dict) else None
+    return ncells is not None and int(ncells) != adata.n_obs
+
+
 def get_spanorm_fit(adata, null: bool = False, validate: bool = True) -> SpaNormFit | None:
-    """The stored fit (R ``getSpaNormFit``): ``null=True`` selects the technical (SVG) null fit."""
+    """The stored fit (R ``getSpaNormFit``): ``null=True`` selects the technical (SVG) null fit.
+
+    With ``validate`` a missing fit, or one computed on a different number of spots (a spot
+    subset of the object), is an error, as in R.
+    """
     name = "spanorm_null" if null else "spanorm"
     fit = load_fit(adata, name, validate=False)
     if validate:
+        rerun = "spanorm_svg" if null else "spanorm"
         if fit is None:
             raise ValueError(
-                f"{name} model not found in 'adata'. Please run "
-                f"'{'spanorm_svg' if null else 'spanorm'}' on the object first."
+                f"{name} model not found in 'adata'. Please run '{rerun}' on the object first."
+            )
+        if fit_is_stale_for_spots(adata, name):
+            raise ValueError(
+                f"{name} model dimensions do not match the data. Please rerun '{rerun}'."
             )
         fit.validate()
     return fit
