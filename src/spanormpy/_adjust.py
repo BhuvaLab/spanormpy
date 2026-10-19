@@ -166,7 +166,10 @@ def normalise_block_size(Y) -> float:
 def subset_fit_genes(fit, rows) -> SimpleNamespace:
     """Gene subset of a fit that keeps the global dispersion threshold (R ``subsetFitGenes``)."""
     psi = np.asarray(fit.psi, dtype=float)
-    psi_max = global_psi_max(psi)
+    # a fit that is already a gene subset carries the global threshold of the full fit
+    psi_max = getattr(fit, "psi_max", None)
+    if psi_max is None:
+        psi_max = global_psi_max(psi)
     return SimpleNamespace(
         gmean=np.asarray(fit.gmean)[rows],
         alpha=np.asarray(fit.alpha)[rows, :],
