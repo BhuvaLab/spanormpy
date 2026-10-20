@@ -26,7 +26,20 @@ _EPS = np.finfo(float).eps
 # small numeric helpers
 # --------------------------------------------------------------------------------------
 def _col_sums(Y) -> np.ndarray:
-    return np.asarray(Y.sum(axis=0, dtype=np.float64), dtype=float).ravel()
+    # float64 accumulation regardless of input dtype. For sparse input this is done with
+    # bincount (always double) rather than ``Y.sum(dtype=...)``, whose accumulator dtype
+    # changed across scipy versions (scipy 1.18 no longer accumulates in float64).
+    if sp.issparse(Y):
+        n = Y.shape[1]
+        if Y.format == "csr":
+            idx = Y.indices
+            data = Y.data
+        else:
+            Y = Y.tocsc()
+            idx = np.repeat(np.arange(n), np.diff(Y.indptr))
+            data = Y.data
+        return np.bincount(idx, weights=data.astype(np.float64, copy=False), minlength=n)
+    return np.asarray(Y).sum(axis=0, dtype=np.float64).ravel()
 
 
 def _dense_block(Y, rows=None, cols=None) -> np.ndarray:
