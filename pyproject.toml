@@ -11,7 +11,6 @@ license = "GPL-3.0-or-later"
 authors = [
     { name = "Dharmesh D. Bhuva", email = "dharmesh.bhuva@adelaide.edu.au" },
     { name = "Agus Salim", email = "salim.a@unimelb.edu.au" },
-    { name = "Ahmed Mohamed", email = "mohamed.a@wehi.edu.au" },
 ]
 keywords = ["spatial transcriptomics", "normalisation", "scverse", "anndata", "negative binomial", "SpaNorm"]
 classifiers = [
