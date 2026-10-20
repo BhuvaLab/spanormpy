@@ -78,9 +78,9 @@ once the package is published there. spanormpy contains no telemetry and makes n
 
 ## Citation
 
-Salim A, Bhuva DD, Chen C, Yang P, Davis MJ, Yang JYH. SpaNorm: spatially-aware normalisation for
-spatial transcriptomics data. bioRxiv 2024, 2024-05.
-[doi:10.1101/2024.05.31.596908](https://doi.org/10.1101/2024.05.31.596908)
+Salim A, Bhuva DD, Chen C, Tan CW, Yang P, Davis MJ, Yang JYH. SpaNorm: spatially-aware
+normalization for spatial transcriptomics data. *Genome Biology* 2025, 26(1):109.
+[doi:10.1186/s13059-025-03565-y](https://doi.org/10.1186/s13059-025-03565-y)
 
 ## Licence
 
