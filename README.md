@@ -14,13 +14,13 @@ backend that runs on CPU and CUDA (Apple Metal in float32).
 Documentation: <https://bhuvalab.github.io/SpaNorm/> (one site covering both the R package and spanormpy,
 with side-by-side R and Python tutorials and the API reference for each).
 
-Status: under development (`0.1.0.dev0`). Ports SpaNorm 1.7.15 (R commit `c12e5e5`).
+Version 0.1.0 (beta). Ports SpaNorm 1.7.16 (R commit `f233b7b`, Bioconductor devel); see [CHANGELOG.md](CHANGELOG.md).
 
 ## Install
 
 ```bash
-pip install git+https://github.com/BhuvaLab/spanormpy   # for now
-pip install spanormpy                                    # once published on PyPI
+pip install spanormpy
+pip install git+https://github.com/BhuvaLab/spanormpy   # development version
 ```
 
 Optional extras: `pip install "spanormpy[spatial]"` for `SpatialData` input and

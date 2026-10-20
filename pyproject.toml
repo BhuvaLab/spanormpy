@@ -8,7 +8,22 @@ dynamic = ["version"]
 description = "Spatially-aware normalisation for spatial transcriptomics data (Python port of SpaNorm)"
 readme = "README.md"
 license = "GPL-3.0-or-later"
-requires-python = ">=3.10"
+authors = [
+    { name = "Dharmesh D. Bhuva", email = "dharmesh.bhuva@adelaide.edu.au" },
+    { name = "Agus Salim", email = "salim.a@unimelb.edu.au" },
+    { name = "Ahmed Mohamed", email = "mohamed.a@wehi.edu.au" },
+]
+keywords = ["spatial transcriptomics", "normalisation", "scverse", "anndata", "negative binomial", "SpaNorm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+requires-python = ">=3.11"
 dependencies = [
     "numpy>=1.26",
     "scipy>=1.11",
@@ -18,6 +33,14 @@ dependencies = [
     "python-igraph>=0.11",
     "matplotlib>=3.8",
 ]
+
+[project.urls]
+Homepage = "https://github.com/BhuvaLab/spanormpy"
+Documentation = "https://bhuvalab.github.io/SpaNorm/"
+Source = "https://github.com/BhuvaLab/spanormpy"
+Issues = "https://github.com/BhuvaLab/spanormpy/issues"
+Changelog = "https://github.com/BhuvaLab/spanormpy/blob/main/CHANGELOG.md"
+"R package" = "https://github.com/BhuvaLab/SpaNorm"
 
 [project.optional-dependencies]
 spatial = ["spatialdata>=0.2"]

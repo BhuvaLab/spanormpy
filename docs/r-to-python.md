@@ -1,6 +1,6 @@
 # R to Python mapping
 
-Every export of R SpaNorm 1.7.15 (commit `c12e5e5`, `NAMESPACE`) and its spanormpy counterpart.
+Every export of R SpaNorm 1.7.16 (commit `f233b7b`, `NAMESPACE`; the export list is unchanged from 1.7.15) and its spanormpy counterpart.
 "internal" rows are building blocks that R exports for the GPU and polishing engines; they live in
 private modules of spanormpy (no stability guarantee), or are plain `torch` operations where R needed
 a wrapper around `torch` for CPU/GPU dispatch.
