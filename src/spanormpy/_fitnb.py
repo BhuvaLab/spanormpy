@@ -615,6 +615,7 @@ def fit_nb(
     >>> W = np.column_stack([np.ones(50), np.linspace(-1, 1, 50)])  # intercept + one covariate
     >>> fit = sn.fit_nb(Y, W, verbose=False, backend="cpu")
     >>> fit["alpha"].shape  # genes x covariates
+
     >>> fit["psi"][:3]  # dispersions
     """
     backend = _match_arg(backend, ("auto", "cpu", "gpu"), "backend")
