@@ -330,6 +330,18 @@ def spanorm(
     -------
     ``None``, or with ``copy=True`` a modified copy of the same container type (an
     ``AnnData``, or a new ``SpatialData`` whose table is the result; the input is untouched).
+
+    Examples
+    --------
+    >>> import spanormpy as sn
+    >>> # adata: the HumanDLPFC AnnData (raw counts in X, coordinates in obsm["spatial"]),
+    >>> # already fitted with sn.spanorm(adata, sample_p=0.05, df_tps=2)
+    >>> # an existing, matching fit in adata is reused; only the adjustment is recomputed
+    >>> sn.spanorm(adata, sample_p=0.05, df_tps=2, tol=1e-2, random_state=36)
+    >>> adata
+
+    >>> # the normalised values are in the "logcounts" layer; the fit lives in var, varm, obsm and uns
+    >>> adata.layers["logcounts"][:3, :3]
     """
     unknown = sorted(set(kwargs) - _FIT_PASSTHROUGH)
     if unknown:

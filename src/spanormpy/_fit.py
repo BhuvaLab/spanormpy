@@ -117,7 +117,19 @@ def validate_fit(fit: SpaNormFit) -> bool:
 
 
 def is_polished(fit) -> bool:
-    """Does the fit carry a per-gene polish (R ``isPolished``)?"""
+    """Does the fit carry a per-gene polish (R ``isPolished``)?
+
+    Examples
+    --------
+    >>> import spanormpy as sn
+    >>> # adata: the HumanDLPFC AnnData (raw counts in X, coordinates in obsm["spatial"]),
+    >>> # already fitted with sn.spanorm(adata, sample_p=0.05, df_tps=2)
+    >>> from spanormpy._fit import load_fit  # the stored fit as a SpaNormFit object
+    >>> sn.is_polished(load_fit(adata, "spanorm"))
+
+    >>> sn.polish_spanorm(adata, verbose=False)
+    >>> sn.is_polished(load_fit(adata, "spanorm"))
+    """
     return len(getattr(fit, "polish", None) or {}) > 0
 
 

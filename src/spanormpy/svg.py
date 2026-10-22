@@ -357,6 +357,14 @@ def spanorm_svg(
     Returns
     -------
     ``None``, or with ``copy=True`` a modified copy of the same container type.
+
+    Examples
+    --------
+    >>> import spanormpy as sn
+    >>> # adata: the HumanDLPFC AnnData (raw counts in X, coordinates in obsm["spatial"]),
+    >>> # already fitted with sn.spanorm(adata, sample_p=0.05, df_tps=2)
+    >>> sn.spanorm_svg(adata)
+    >>> adata.var.filter(like="svg_").head()
     """
     adata, write_back = resolve_input(data, layer, "spatial", table_key)
     if copy:
@@ -440,6 +448,14 @@ def top_svgs(
     by FDR (ties in gene order). A gene whose FDR is NaN is kept, with all-NaN statistics, after
     the sorted finite rows and counted toward ``n``, as R's ``results[svg.fdr <= fdr, ]`` keeps
     one all-NA row per NaN (R names them ``NA``, ``NA.1``, ...; here they keep the gene name).
+
+    Examples
+    --------
+    >>> import spanormpy as sn
+    >>> # adata: the HumanDLPFC AnnData (raw counts in X, coordinates in obsm["spatial"]),
+    >>> # already fitted with sn.spanorm(adata, sample_p=0.05, df_tps=2)
+    >>> # adata: also holds spatially variable gene results from sn.spanorm_svg(adata)
+    >>> sn.top_svgs(adata, n=10)
     """
     if not n > 0:
         raise ValueError("n > 0 is not TRUE")

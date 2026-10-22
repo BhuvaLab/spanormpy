@@ -605,6 +605,17 @@ def fit_nb(
     ``log(mu) = W @ alpha.T (+ offset)`` with no built-in intercept (``gmean``
     is zero). ``Y`` is genes x cells, ``W`` cells x covariates. Returns
     ``alpha``, ``gmean``, ``psi``, ``loglik``, ``sampling``.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> import spanormpy as sn
+    >>> rng = np.random.default_rng(1)
+    >>> Y = rng.poisson(5, size=(20, 50))  # counts, genes x cells
+    >>> W = np.column_stack([np.ones(50), np.linspace(-1, 1, 50)])  # intercept + one covariate
+    >>> fit = sn.fit_nb(Y, W, verbose=False, backend="cpu")
+    >>> fit["alpha"].shape  # genes x covariates
+    >>> fit["psi"][:3]  # dispersions
     """
     backend = _match_arg(backend, ("auto", "cpu", "gpu"), "backend")
     if idx is None:
@@ -647,6 +658,17 @@ def calculate_mu(
 
     Returns a numpy array when ``backend`` resolves to the CPU and a torch
     tensor on the accelerator otherwise (R's ``calculateMu``).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> import spanormpy as sn
+    >>> rng = np.random.default_rng(1)
+    >>> Y = rng.poisson(5, size=(20, 50))  # counts, genes x cells
+    >>> W = np.column_stack([np.ones(50), np.linspace(-1, 1, 50)])  # intercept + one covariate
+    >>> fit = sn.fit_nb(Y, W, verbose=False, backend="cpu")
+    >>> mu = sn.calculate_mu(fit["gmean"], fit["alpha"], W)
+    >>> mu.shape  # genes x cells
     """
     check_winsor(winsor)
     backend = _match_arg(backend, ("auto", "cpu", "gpu"), "backend")

@@ -376,6 +376,14 @@ def polish_spanorm(
     Returns
     -------
     ``None``, or with ``copy=True`` a modified copy of the same container type.
+
+    Examples
+    --------
+    >>> import spanormpy as sn
+    >>> # adata: the HumanDLPFC AnnData (raw counts in X, coordinates in obsm["spatial"]),
+    >>> # already fitted with sn.spanorm(adata, sample_p=0.05, df_tps=2)
+    >>> sn.polish_spanorm(adata, verbose=False)
+    >>> adata.var.filter(like="polish").head()
     """
     unknown = sorted(set(kwargs) - _POLISH_PASSTHROUGH)
     if unknown:

@@ -157,6 +157,14 @@ def spanorm_pca(
     Returns
     -------
     ``None``, or with ``copy=True`` a modified copy of the same container type.
+
+    Examples
+    --------
+    >>> import spanormpy as sn
+    >>> # adata: the HumanDLPFC AnnData (raw counts in X, coordinates in obsm["spatial"]),
+    >>> # already fitted with sn.spanorm(adata, sample_p=0.05, df_tps=2)
+    >>> sn.spanorm_pca(adata, ncomponents=10)
+    >>> adata.obsm["X_spanorm_pca"].shape
     """
     adata, write_back = resolve_input(data, layer, "spatial", table_key)
     if not nsvgs > 0:

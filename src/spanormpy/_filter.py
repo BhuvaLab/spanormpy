@@ -44,6 +44,13 @@ def filter_genes(
     ``rowMeans(counts > 0) >= prop``. With ``inplace=False`` the boolean mask (R's return
     value) is returned. With ``inplace=True`` (scanpy ``filter_genes`` convention) the genes
     failing the filter are removed from ``adata`` and ``None`` is returned.
+
+    Examples
+    --------
+    >>> import spanormpy as sn
+    >>> # adata: the HumanDLPFC AnnData (raw counts in X, coordinates in obsm["spatial"])
+    >>> keep = sn.filter_genes(adata, prop=0.2, inplace=False)  # genes expressed in >= 20% of spots
+    >>> int(keep.sum()), keep.size
     """
     if not (0 <= prop <= 1):
         raise ValueError("'prop' must be between 0 and 1")

@@ -17,6 +17,14 @@ def covariate_values(adata, covariate="biology", genes=None, name="spanorm") -> 
 
     ``covariate`` is ``"biology"``, ``"ls"`` (library-size effect at the median library size)
     or ``"batch"``. ``genes`` is a list of ``var_names`` (default all).
+
+    Examples
+    --------
+    >>> import spanormpy as sn
+    >>> # adata: the HumanDLPFC AnnData (raw counts in X, coordinates in obsm["spatial"]),
+    >>> # already fitted with sn.spanorm(adata, sample_p=0.05, df_tps=2)
+    >>> vals = sn.pl.covariate_values(adata, covariate="biology", genes=["MOBP", "ACTB"])
+    >>> vals.shape  # spots x genes
     """
     if covariate not in _FUNS:
         raise ValueError("'covariate' must be one of: biology, ls, batch")
@@ -48,6 +56,17 @@ def plot_covariate(adata, covariate="biology", color=None, name="spanorm", **kwa
         Name of the stored fit.
     **kwargs
         Passed to :func:`spanormpy.pl.plot_spatial` (``img``, ``crop``, ``ax``, ``show``, ...).
+
+    Examples
+    --------
+    >>> import spanormpy as sn
+    >>> # adata: the HumanDLPFC AnnData (raw counts in X, coordinates in obsm["spatial"]),
+    >>> # already fitted with sn.spanorm(adata, sample_p=0.05, df_tps=2)
+    >>> # the biology (spatially varying) component learnt for MOBP
+    >>> ax = sn.pl.plot_covariate(adata, covariate="biology", color="MOBP", size=3)
+
+    >>> # the library size effect learnt for MOBP
+    >>> ax = sn.pl.plot_covariate(adata, covariate="ls", color="MOBP", size=3)
     """
     for bad in ("what", "layer", "basis"):
         if bad in kwargs:

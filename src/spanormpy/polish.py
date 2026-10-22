@@ -327,6 +327,17 @@ def polish_nb(
         returned fit, NaN for a gene that was not polished), and ``polish``, a DataFrame
         with one row per gene: ``iterations``, ``psi_fitnb``, ``restarted``, ``capped``,
         ``singular``, ``psi_bound`` and ``polished``.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> import spanormpy as sn
+    >>> rng = np.random.default_rng(1)
+    >>> Y = rng.poisson(5, size=(20, 50))  # counts, genes x cells
+    >>> W = np.column_stack([np.ones(50), np.linspace(-1, 1, 50)])  # intercept + one covariate
+    >>> fit = sn.fit_nb(Y, W, verbose=False, backend="cpu")
+    >>> pol = sn.polish_nb(Y, W, fit["alpha"], fit["psi"])
+    >>> pol["polish"].head()  # per-gene convergence diagnostics
     """
     psi_method = _match_arg(psi_method, ("profile", "fixed"), "psi_method")
     engine = _match_arg(engine, ("batch", "gene"), "engine")
@@ -620,6 +631,16 @@ def nb_profile_psi(
     -------
     numpy.ndarray
         one dispersion per gene.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> import spanormpy as sn
+    >>> rng = np.random.default_rng(1)
+    >>> Y = rng.poisson(5, size=(20, 50))  # counts, genes x cells
+    >>> W = np.column_stack([np.ones(50), np.linspace(-1, 1, 50)])  # intercept + one covariate
+    >>> fit = sn.fit_nb(Y, W, verbose=False, backend="cpu")
+    >>> sn.nb_profile_psi(Y, W, fit["alpha"], fit["psi"])[:3]  # profile-ML dispersions
     """
     Y = _as_matrix(Y, "Y")
     alpha = np.asarray(alpha, dtype=np.float64)

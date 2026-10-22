@@ -36,6 +36,11 @@ def nb_mu_floor() -> float:
 
     The polish engine floors every fitted mean at this value; a caller that rebuilds
     the mean from polished coefficients should floor at the same value.
+
+    Examples
+    --------
+    >>> import spanormpy as sn
+    >>> sn.nb_mu_floor()  # smallest fitted mean used by the polishing engine
     """
     return MU_FLOOR
 

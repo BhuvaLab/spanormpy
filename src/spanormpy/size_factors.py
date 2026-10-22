@@ -834,7 +834,15 @@ def _fast_size_factors(Y) -> np.ndarray:
 
 
 def fast_size_factors(adata: AnnData, layer: str | None = None) -> None:
-    """Library-size factors (R ``fastSizeFactors``), written to ``obs["spanorm_size_factors"]``."""
+    """Library-size factors (R ``fastSizeFactors``), written to ``obs["spanorm_size_factors"]``.
+
+    Examples
+    --------
+    >>> import spanormpy as sn
+    >>> # adata: the HumanDLPFC AnnData (raw counts in X, coordinates in obsm["spatial"])
+    >>> sn.fast_size_factors(adata)
+    >>> adata.obs["spanorm_size_factors"].describe()
+    """
     Y = get_counts_genes_by_cells(adata, layer)
     _check_counts(Y)
     _write_obs(adata, "spanorm_size_factors", _fast_size_factors(Y))

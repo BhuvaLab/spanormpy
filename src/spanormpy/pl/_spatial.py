@@ -195,6 +195,20 @@ def plot_spatial(adata, what="annotation", color=None, layer=None, basis=None, i
         (``"hires"``/``"lowres"``) and ``obsm`` key of the coordinates.
     **kwargs
         Passed to the scatter (or ``PatchCollection`` when ``circles=True``).
+
+    Examples
+    --------
+    >>> import spanormpy as sn
+    >>> # adata: the HumanDLPFC AnnData (raw counts in X, coordinates in obsm["spatial"])
+    >>> # colour spots by an annotation
+    >>> ax = sn.pl.plot_spatial(adata, color="AnnotatedCluster", size=3)
+
+    >>> # colour spots by the expression of a gene
+    >>> ax = sn.pl.plot_spatial(adata, what="expression", color="MOBP", size=3)
+
+    >>> # use a layer (here the normalised values written by sn.spanorm) and a different colour map
+    >>> ax = sn.pl.plot_spatial(adata, what="expression", color="MOBP", layer="logcounts",
+    ...                         size=3, cmap="magma")
     """
     values, label = _values(adata, what, color, layer, basis)
     return _draw(adata, values, label, img=img, crop=crop, img_alpha=img_alpha, size=size,
